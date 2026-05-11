@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flag Trivia</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8F%B3%EF%B8%8F%E2%80%8D%F0%9F%8C%88%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🌍</span>
+      <h1>Flag Trivia</h1>
+    </div>
+    <nav class="modes" aria-label="Game mode">
+      <button class="mode-btn active" data-mode="menu">Menu</button>
+      <button class="mode-btn" data-mode="learn">Learn</button>
+      <button class="mode-btn" data-mode="test">Test</button>
+    </nav>
+  </header>
+
+  <section id="filter-bar" class="filter-bar" aria-label="Filters"></section>
+
+  <div class="pool-meta">
+    <span id="pool-count"></span>
+  </div>
+
+  <main id="view" class="view"></main>
+
+  <footer class="footer">
+    <small>Flags via <a href="https://flagcdn.com" rel="noopener" target="_blank">flagcdn.com</a>. Country dataset includes UN states + observers + major territories.</small>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
