@@ -91,9 +91,20 @@ function levelPool() {
 }
 
 function updateLevelHint() {
-  const lvls = [...state.levels].sort();
-  const names = lvls.map((l) => LEVEL_NAMES[l]).join(" + ");
-  $("level-hint").textContent = `${names} — ${levelPool().length} flags in play`;
+  const hint = $("level-hint");
+  if (state.levels.size === 0) {
+    hint.textContent = "Select at least one level to play";
+    return;
+  }
+  const names = [...state.levels].sort().map((l) => LEVEL_NAMES[l]).join(" + ");
+  hint.textContent = `${names} — ${levelPool().length} flags in play`;
+}
+
+function refreshLevelButtons() {
+  $("level-picker").querySelectorAll(".level-btn").forEach((btn, i) => {
+    btn.classList.toggle("selected", state.levels.has(i + 1));
+  });
+  updateLevelHint();
 }
 
 function buildLevelPicker() {
@@ -104,19 +115,31 @@ function buildLevelPicker() {
     btn.innerHTML = `<span class="lv-num">${lv}</span>${LEVEL_NAMES[lv]}`;
     btn.title = LEVEL_HINTS[lv];
     btn.addEventListener("click", () => {
-      if (state.levels.has(lv)) {
-        if (state.levels.size === 1) return; // keep at least one level selected
-        state.levels.delete(lv);
-        btn.classList.remove("selected");
-      } else {
-        state.levels.add(lv);
-        btn.classList.add("selected");
-      }
-      updateLevelHint();
+      if (state.levels.has(lv)) state.levels.delete(lv);
+      else state.levels.add(lv);
+      refreshLevelButtons();
     });
     picker.appendChild(btn);
   }
+  $("levels-all").addEventListener("click", () => {
+    state.levels = new Set([1, 2, 3, 4, 5]);
+    refreshLevelButtons();
+  });
+  $("levels-none").addEventListener("click", () => {
+    state.levels.clear();
+    refreshLevelButtons();
+  });
   updateLevelHint();
+}
+
+// true when playable; otherwise nudges the user to pick a level
+function requireLevels() {
+  if (state.levels.size > 0) return true;
+  const hint = $("level-hint");
+  hint.classList.remove("shake");
+  void hint.offsetWidth; // restart the animation
+  hint.classList.add("shake");
+  return false;
 }
 
 // ---------- autocomplete ----------
@@ -181,6 +204,7 @@ function moveActive(delta) {
 // ---------- trivia game flow ----------
 
 function startQuiz() {
+  if (!requireLevels()) return;
   state.mode = "flag";
   state.deck = shuffle(levelPool());
   state.deckPos = 0;
@@ -481,6 +505,7 @@ function saveScore(e) {
 // ---------- knowledge (learn) mode ----------
 
 function startLearn() {
+  if (!requireLevels()) return;
   state.mode = "learn";
   state.learnDeck = shuffle(levelPool());
   state.learnPos = 0;
