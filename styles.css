@@ -274,12 +274,12 @@ header {
   margin-bottom: 12px;
   flex-wrap: wrap;
 }
+/* informational label, styled to NOT look like a button */
 .badge {
-  background: var(--accent);
-  color: var(--accent-ink);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+  padding: 2px 0 2px 10px;
   font-weight: 700;
-  padding: 4px 13px;
-  border-radius: 999px;
   font-size: 0.82rem;
   letter-spacing: 0.4px;
 }
@@ -554,6 +554,35 @@ header {
 
 section#screen-learn .quiz-actions { margin-top: 18px; }
 
+/* ---------- resume & modal ---------- */
+
+.resume-btn { width: 100%; font-size: 1.05rem; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 18, 26, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+.modal-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 20px;
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+.modal-card p { margin: 0; font-size: 1rem; line-height: 1.5; }
+
 /* ---------- motion & small screens ---------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -575,7 +604,6 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
   .ghost-btn { padding: 7px 12px; font-size: 0.82rem; }
 
   .statusbar { gap: 10px; margin-bottom: 8px; }
-  .badge { font-size: 0.72rem; padding: 3px 10px; }
   .stat { font-size: 0.68rem; }
   .duel-bar { margin-bottom: 8px; gap: 8px; }
   .duel-player { padding: 5px 10px; font-size: 0.9rem; }
@@ -590,9 +618,12 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
   .tier-chip { font-size: 0.62rem; padding: 4px 10px; }
   .quiz-prompt { font-size: 1.02rem; }
 
-  .answer-area { flex-direction: column; gap: 8px; }
+  /* keep the Guess button inline so it doesn't eat vertical space */
+  .answer-area { gap: 8px; }
+  .answer-area .primary-btn { padding: 10px 14px; font-size: 0.9rem; }
   #quiz-input { padding: 10px 12px; }
   .primary-btn { padding: 10px 18px; }
+  .badge { font-size: 0.72rem; padding-left: 8px; }
   .quiz-actions { gap: 8px; margin-top: 0; }
   .suggestions { max-height: 165px; }
   .hint-box { padding: 10px 12px; }

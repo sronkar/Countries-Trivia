@@ -69,6 +69,7 @@ const state = {
   hintedThisQuestion: false,
   questionNum: 0,
   saved: false,
+  paused: false,       // a game is parked behind the menu, resumable
   // 2-player duel: null in solo, else {players:[{name,score,hints}...], turn, target}
   duel: null,
   // learn state
@@ -90,6 +91,47 @@ function showScreen(name) {
   Object.values(screens).forEach((s) => s.classList.add("hidden"));
   screens[name].classList.remove("hidden");
   $("home-btn").classList.toggle("hidden", name === "menu");
+}
+
+// in-page confirm dialog (native confirm() can be blocked inside sandboxed frames)
+function askConfirm(text, yesLabel, noLabel) {
+  return new Promise((resolve) => {
+    $("modal-text").textContent = text;
+    $("modal-yes").textContent = yesLabel;
+    $("modal-no").textContent = noLabel;
+    $("modal").classList.remove("hidden");
+    const done = (v) => {
+      $("modal").classList.add("hidden");
+      $("modal-yes").onclick = $("modal-no").onclick = $("modal").onclick = null;
+      resolve(v);
+    };
+    $("modal-yes").onclick = () => done(true);
+    $("modal-no").onclick = () => done(false);
+    $("modal").onclick = (e) => { if (e.target === $("modal")) done(false); };
+    $("modal-no").focus();
+  });
+}
+
+async function confirmDiscardPaused() {
+  if (!state.paused) return true;
+  return askConfirm("You have a paused game. Discard it and start a new one?", "Discard & start", "Keep it");
+}
+
+function updateResumeBanner() {
+  const banner = $("resume-banner");
+  if (!state.paused) {
+    banner.classList.add("hidden");
+    return;
+  }
+  let label;
+  if (state.duel) {
+    const [a, b] = state.duel.players;
+    label = `▶ Resume duel — ${a.name} ${a.score} : ${b.score} ${b.name}`;
+  } else {
+    label = `▶ Resume game — ${state.score} pts · flag ${state.questionNum} / ${state.deck.length}`;
+  }
+  $("resume-btn").textContent = label;
+  banner.classList.remove("hidden");
 }
 
 // ---------- level picker (multi-select) ----------
@@ -221,14 +263,16 @@ const duelLeader = () =>
   state.duel.players[0].score >= state.duel.players[1].score ? state.duel.players[0] : state.duel.players[1];
 const duelWon = () => state.duel.players.some((p) => p.score >= state.duel.target);
 
-function startQuiz() {
+async function startQuiz() {
   if (!requireLevels()) return;
+  if (!(await confirmDiscardPaused())) return;
   state.duel = null;
   beginGame();
 }
 
-function startDuel() {
+async function startDuel() {
   if (!requireLevels()) return;
+  if (!(await confirmDiscardPaused())) return;
   const p1 = $("duel-p1").value.trim() || "Player 1";
   const p2 = $("duel-p2").value.trim() || "Player 2";
   const target = Math.max(10, parseInt($("duel-target").value, 10) || 100);
@@ -279,6 +323,7 @@ function beginGame() {
   state.hintsLeft = MAX_HINTS;
   state.questionNum = 0;
   state.saved = false;
+  state.paused = false;
   $("quiz-level-badge").textContent =
     `${levelsLabel()} · ` + (state.duel ? `Duel to ${state.duel.target}` : "Trivia");
   $("wrap-score").classList.toggle("hidden", !!state.duel);
@@ -345,9 +390,9 @@ function updateStats() {
 
 function updateHintButton() {
   const btn = $("quiz-hint");
-  const usable = state.stage === "country" && hintsLeftNow() > 0 && !state.hintedThisQuestion;
-  btn.classList.toggle("hidden", state.stage !== "country");
-  btn.disabled = !usable;
+  const inGuessStage = state.stage === "country" || state.stage === "capital";
+  btn.classList.toggle("hidden", !inGuessStage);
+  btn.disabled = !(inGuessStage && hintsLeftNow() > 0 && !state.hintedThisQuestion);
   btn.textContent = `💡 Hint (${hintsLeftNow()} left)`;
 }
 
@@ -371,9 +416,8 @@ function submitGuess() {
       else state.score += c.points;
       state.countriesRight++;
       recordResult(c.code, { seen: 1, right: 1, hinted: state.hintedThisQuestion ? 1 : 0 });
-      setFeedback(`✔ Correct! It's ${c.name}. +${c.points} pts`, "good");
-      pauseForNext("Next: guess the capital ➜");
-      state.afterNext = "capital";
+      startCapitalStage(); // straight to the capital — no extra click
+      setFeedback(`✔ It's ${c.name}! +${c.points} pts — now the capital:`, "good");
     } else {
       state.attempts++;
       if (state.attempts >= MAX_ATTEMPTS) {
@@ -381,7 +425,6 @@ function submitGuess() {
         recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
         setFeedback(`✘ Wrong — it was ${c.name} (capital: ${c.capital}).`, "bad");
         pauseForNext(nextLabel());
-        state.afterNext = "question";
       } else {
         setFeedback(`✘ Wrong country — ${MAX_ATTEMPTS - state.attempts} ${MAX_ATTEMPTS - state.attempts === 1 ? "try" : "tries"} left.`, "bad");
         $("quiz-input").select();
@@ -406,7 +449,6 @@ function submitGuess() {
       setFeedback(`✘ Wrong — the capital of ${c.name} is ${c.capital}.`, "bad");
     }
     pauseForNext(nextLabel());
-    state.afterNext = "question";
   }
   updateStats();
 }
@@ -435,18 +477,15 @@ function pauseForNext(label) {
 }
 
 function onNext() {
-  if (state.afterNext === "capital") {
-    startCapitalStage();
-  } else {
-    if (state.duel) state.duel.turn = 1 - state.duel.turn; // hand over the flag
-    nextQuestion();
-  }
+  if (state.duel) state.duel.turn = 1 - state.duel.turn; // hand over the flag
+  nextQuestion();
 }
 
 function startCapitalStage() {
   const c = state.current;
   state.stage = "capital";
   state.attempts = 0;
+  state.hintedThisQuestion = false; // a fresh hint is allowed for the capital
   $("quiz-prompt").textContent =
     (state.duel ? `${duelP().name} — w` : "W") + `hat is the capital of ${c.name}?`;
   setFeedback("", "");
@@ -454,9 +493,12 @@ function startCapitalStage() {
   $("quiz-input").placeholder = "Type a capital city...";
   $("quiz-input").disabled = false;
   $("quiz-submit").disabled = false;
+  $("hint-box").classList.add("hidden");
+  $("hint-box").innerHTML = "";
   $("quiz-reveal").classList.remove("hidden");
   $("quiz-next").classList.add("hidden");
-  updateHintButton(); // hides it (country stage only)
+  updateHintButton();
+  hideSuggestions();
   window.scrollTo(0, 0);
   focusInput($("quiz-input"));
 }
@@ -468,12 +510,10 @@ function giveUp() {
     recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
     setFeedback(`It was ${c.name} (capital: ${c.capital}).`, "bad");
     pauseForNext(nextLabel());
-    state.afterNext = "question";
   } else if (state.stage === "capital") {
     recordResult(c.code, { capSeen: 1, capRight: 0 });
     setFeedback(`The capital of ${c.name} is ${c.capital}.`, "bad");
     pauseForNext(nextLabel());
-    state.afterNext = "question";
   }
   updateStats();
 }
@@ -565,8 +605,32 @@ function exportStats() {
 
 // ---------- hints ----------
 
+function hintLabel(text) {
+  const label = document.createElement("p");
+  label.className = "hint-label";
+  label.textContent = text;
+  return label;
+}
+
+function hintOptions(box, options, stage) {
+  const row = document.createElement("div");
+  row.className = "hint-options";
+  options.forEach((optText) => {
+    const b = document.createElement("button");
+    b.className = "hint-option";
+    b.textContent = optText;
+    b.addEventListener("click", () => {
+      if (state.stage !== stage) return;
+      $("quiz-input").value = optText;
+      submitGuess();
+    });
+    row.appendChild(b);
+  });
+  box.appendChild(row);
+}
+
 function useHint() {
-  if (state.stage !== "country" || hintsLeftNow() <= 0 || state.hintedThisQuestion) return;
+  if ((state.stage !== "country" && state.stage !== "capital") || hintsLeftNow() <= 0 || state.hintedThisQuestion) return;
   if (state.duel) duelP().hints--;
   else state.hintsLeft--;
   state.hintedThisQuestion = true;
@@ -574,34 +638,22 @@ function useHint() {
   const box = $("hint-box");
   box.innerHTML = "";
 
-  if (c.level <= EASY_HINT_MAX_LEVEL) {
-    // easy hint: 3 options to choose from
-    const decoys = shuffle(COUNTRIES.filter((x) => x.level === c.level && x.code !== c.code)).slice(0, 2);
-    const options = shuffle([c, ...decoys]);
-    const label = document.createElement("p");
-    label.className = "hint-label";
-    label.textContent = "💡 It's one of these:";
-    box.appendChild(label);
-    const row = document.createElement("div");
-    row.className = "hint-options";
-    options.forEach((opt) => {
-      const b = document.createElement("button");
-      b.className = "hint-option";
-      b.textContent = opt.name;
-      b.addEventListener("click", () => {
-        if (state.stage !== "country") return;
-        $("quiz-input").value = opt.name;
-        submitGuess();
-      });
-      row.appendChild(b);
-    });
-    box.appendChild(row);
+  const decoyPool = () => shuffle(COUNTRIES.filter((x) => x.level === c.level && x.code !== c.code)).slice(0, 2);
+
+  if (state.stage === "country") {
+    if (c.level <= EASY_HINT_MAX_LEVEL) {
+      box.appendChild(hintLabel("💡 It's one of these:"));
+      hintOptions(box, shuffle([c, ...decoyPool()].map((x) => x.name)), "country");
+    } else {
+      box.appendChild(hintLabel(`💡 Located in ${c.region}.`));
+    }
   } else {
-    // hard hint: geographical location
-    const label = document.createElement("p");
-    label.className = "hint-label";
-    label.textContent = `💡 Located in ${c.region}.`;
-    box.appendChild(label);
+    if (c.level <= EASY_HINT_MAX_LEVEL) {
+      box.appendChild(hintLabel("💡 The capital is one of these:"));
+      hintOptions(box, shuffle([c, ...decoyPool()].map((x) => x.capital)), "capital");
+    } else {
+      box.appendChild(hintLabel(`💡 The capital starts with “${c.capital[0]}” (${c.capital.length} characters).`));
+    }
   }
   box.classList.remove("hidden");
   updateHintButton();
@@ -655,6 +707,7 @@ function escapeHtml(s) {
 
 function gameOver() {
   state.stage = "over";
+  state.paused = false;
 
   if (state.duel) {
     const [a, b] = state.duel.players;
@@ -802,9 +855,24 @@ document.querySelectorAll(".mode-card").forEach((btn) => {
 
 $("duel-start").addEventListener("click", startDuel);
 
-$("home-btn").addEventListener("click", () => {
+$("home-btn").addEventListener("click", async () => {
+  const midGame = !screens.quiz.classList.contains("hidden") && state.stage !== "over";
+  if (midGame) {
+    const ok = await askConfirm(
+      "Pause the game and open the menu? You can resume it from there.",
+      "Pause & menu", "Keep playing"
+    );
+    if (!ok) return;
+    state.paused = true;
+  }
   renderHighScores($("menu-highscores"));
+  updateResumeBanner();
   showScreen("menu");
+});
+
+$("resume-btn").addEventListener("click", () => {
+  state.paused = false;
+  showScreen("quiz");
 });
 
 $("quiz-input").addEventListener("input", updateSuggestions);
@@ -840,8 +908,8 @@ $("stats-toggle").addEventListener("click", () => {
   $("stats-toggle").textContent = show ? "Hide stats" : "Show stats";
 });
 $("stats-export").addEventListener("click", exportStats);
-$("stats-reset").addEventListener("click", () => {
-  if (!confirm("Reset all recorded country results?")) return;
+$("stats-reset").addEventListener("click", async () => {
+  if (!(await askConfirm("Reset all recorded country results?", "Reset", "Cancel"))) return;
   try {
     localStorage.removeItem(STATS_KEY);
   } catch { /* ignore */ }
@@ -859,6 +927,7 @@ $("over-again").addEventListener("click", () => {
 });
 $("over-menu").addEventListener("click", () => {
   renderHighScores($("menu-highscores"));
+  updateResumeBanner();
   showScreen("menu");
 });
 

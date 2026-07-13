@@ -23,6 +23,10 @@
   <section id="screen-menu" class="screen">
     <p class="tagline">How well do you know the world? Chart your course below.</p>
 
+    <div id="resume-banner" class="menu-block hidden">
+      <button id="resume-btn" class="primary-btn resume-btn">▶ Resume game</button>
+    </div>
+
     <div class="menu-block">
       <h2>Difficulty <span class="h2-note">— pick one or more levels</span></h2>
       <div id="level-picker" class="level-picker"></div>
@@ -166,6 +170,17 @@
       <button id="learn-next" class="primary-btn">Next →</button>
     </div>
   </section>
+
+  <!-- ============ Confirm dialog (in-page; native confirm may be blocked) ============ -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <p id="modal-text"></p>
+      <div class="quiz-actions">
+        <button id="modal-yes" class="primary-btn">Yes</button>
+        <button id="modal-no" class="ghost-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script src="data.js"></script>
   <script src="app.js"></script>
