@@ -45,6 +45,7 @@ h1 { font-size: 1.5rem; margin: 0; letter-spacing: 0.5px; }
 /* ---------- Menu ---------- */
 .menu-block { margin-bottom: 28px; }
 .menu-block h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
+.h2-note { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 0.85rem; }
 
 .level-picker { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -197,13 +198,82 @@ h1 { font-size: 1.5rem; margin: 0; letter-spacing: 0.5px; }
   cursor: pointer;
   font-size: 0.9rem;
 }
-.ghost-btn:hover { border-color: var(--text); color: var(--text); }
+.ghost-btn:hover:not(:disabled) { border-color: var(--text); color: var(--text); }
+.ghost-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .feedback { min-height: 1.4em; margin: 0; font-weight: 600; text-align: center; }
 .feedback.good { color: var(--good); }
 .feedback.bad { color: var(--bad); }
 
 .quiz-actions { display: flex; gap: 12px; margin-top: 6px; justify-content: center; width: 100%; }
+
+/* ---------- Hints ---------- */
+.hint-box {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hint-label { margin: 0; color: var(--accent); font-weight: 600; font-size: 0.95rem; }
+.hint-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.hint-option {
+  flex: 1 1 0;
+  min-width: 110px;
+  background: var(--bg);
+  border: 1px solid var(--accent-dark);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  transition: background 0.15s;
+}
+.hint-option:hover { background: var(--accent-dark); color: #06283d; }
+
+/* ---------- Game over & high scores ---------- */
+.over-card { text-align: center; }
+.over-title { font-size: 1.6rem; font-weight: 800; margin: 0; }
+.over-summary { color: var(--muted); margin: 0; max-width: 420px; }
+
+.save-form { display: flex; gap: 10px; width: 100%; max-width: 380px; }
+.save-form input {
+  flex: 1;
+  padding: 11px 14px;
+  font-size: 1rem;
+  border-radius: 10px;
+  border: 2px solid var(--card-2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+.save-form input:focus { border-color: var(--accent); }
+
+.hs-wrap { width: 100%; }
+.hs-scroll { overflow-x: auto; }
+.hs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.hs-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--card-2);
+}
+.hs-table td { padding: 8px 10px; border-bottom: 1px solid var(--card-2); }
+.hs-table tbody tr:first-child td { color: var(--accent); font-weight: 700; }
+.hs-empty { color: var(--muted); font-size: 0.9rem; }
+#menu-highscores .hs-table { background: var(--card); border-radius: 10px; }
 
 /* ---------- Knowledge mode ---------- */
 .learn-card { cursor: pointer; user-select: none; }

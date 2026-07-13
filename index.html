@@ -18,7 +18,7 @@
     <p class="tagline">How well do you know the world?</p>
 
     <div class="menu-block">
-      <h2>Difficulty</h2>
+      <h2>Difficulty <span class="h2-note">— pick one or more levels</span></h2>
       <div id="level-picker" class="level-picker"></div>
       <p id="level-hint" class="level-hint"></p>
     </div>
@@ -29,7 +29,7 @@
         <button class="mode-card" data-mode="flag">
           <span class="mode-emoji">🚩</span>
           <span class="mode-name">Trivia</span>
-          <span class="mode-desc">See a flag, name the country, then its capital</span>
+          <span class="mode-desc">Name the country from its flag, then its capital. 3 misses and the game is over!</span>
         </button>
         <button class="mode-card" data-mode="learn">
           <span class="mode-emoji">📖</span>
@@ -38,15 +38,21 @@
         </button>
       </div>
     </div>
+
+    <div class="menu-block">
+      <h2>🏆 High scores</h2>
+      <div id="menu-highscores"></div>
+    </div>
   </section>
 
-  <!-- ============ Quiz screen (flag & map modes) ============ -->
+  <!-- ============ Quiz screen (trivia mode) ============ -->
   <section id="screen-quiz" class="screen hidden">
     <div class="statusbar">
       <span id="quiz-level-badge" class="badge"></span>
       <span class="stat">Score <b id="stat-score">0</b></span>
-      <span class="stat">Streak <b id="stat-streak">0</b></span>
-      <span class="stat">Question <b id="stat-question">1</b></span>
+      <span class="stat" title="Wrong countries allowed">Lives <b id="stat-lives">❤❤❤</b></span>
+      <span class="stat">Hints <b id="stat-hints">2</b></span>
+      <span class="stat">Flag <b id="stat-question">1</b></span>
     </div>
 
     <div class="quiz-card">
@@ -65,11 +71,35 @@
         <button id="quiz-submit" class="primary-btn">Guess</button>
       </div>
 
+      <div id="hint-box" class="hint-box hidden"></div>
+
       <p id="quiz-feedback" class="feedback"></p>
 
       <div class="quiz-actions">
-        <button id="quiz-reveal" class="ghost-btn">Reveal answer</button>
+        <button id="quiz-hint" class="ghost-btn">💡 Hint</button>
+        <button id="quiz-reveal" class="ghost-btn">Give up</button>
         <button id="quiz-next" class="primary-btn hidden">Next ➜</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Game over screen ============ -->
+  <section id="screen-over" class="screen hidden">
+    <div class="quiz-card over-card">
+      <p id="over-title" class="over-title"></p>
+      <p id="over-summary" class="over-summary"></p>
+
+      <form id="over-save-form" class="save-form">
+        <input id="over-name" type="text" maxlength="20" placeholder="Your name" autocomplete="off">
+        <button type="submit" class="primary-btn">Save score</button>
+      </form>
+      <p id="over-saved" class="feedback good hidden">Score saved!</p>
+
+      <div id="over-highscores" class="hs-wrap"></div>
+
+      <div class="quiz-actions">
+        <button id="over-again" class="primary-btn">Play again</button>
+        <button id="over-menu" class="ghost-btn">Menu</button>
       </div>
     </div>
   </section>

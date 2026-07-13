@@ -15,10 +15,15 @@ python3 -m http.server 8000
 
 ## Modes
 
-- **Trivia** — a flag is shown; type the country name (autocomplete suggestions appear as you type), then guess its capital city. 3 tries per step; more points for fewer tries. Score and streak are tracked.
+- **Trivia** — a flag is shown; type the country name (autocomplete suggestions appear as you type), then guess its capital city. 3 tries per step, and after every answer you click **Next** to move on.
+  - **3 missed countries ends the game.** Your score is the number of countries you named correctly (capitals are tracked separately and used as a tiebreaker). Countries never repeat within a game.
+  - **2 hints per game**: on well-known countries (levels 1–3) a hint narrows the answer to 3 choices; on obscure ones (levels 4–5) it reveals the geographical location (e.g. "the Caribbean", "the South Pacific").
+  - **High scores** are saved locally — enter your name on the game-over screen; the top 10 table shows on the menu.
 - **Knowledge** — study mode: a flag is shown; click the card to reveal the country name, click again to reveal the capital, click again for the next card.
 
 ## Difficulty levels
+
+Select **one or more** levels to build your pool — e.g. play 1+2, or 2+4.
 
 | Level | Name | Contents |
 |-------|------|----------|
@@ -34,5 +39,5 @@ Answers are matched ignoring case, accents and punctuation, and common aliases a
 
 - `index.html` — page structure
 - `styles.css` — styling
-- `data.js` — country/territory dataset (~240 entries with capitals, difficulty levels and aliases)
+- `data.js` — country/territory dataset (~240 entries with capitals, regions, difficulty levels and aliases)
 - `app.js` — game logic
