@@ -144,6 +144,11 @@ function levelPool() {
   return COUNTRIES.filter((c) => state.levels.has(c.level));
 }
 
+function pointsRange(pool) {
+  const pts = pool.map((c) => c.points);
+  return `${Math.min(...pts)}–${Math.max(...pts)} pts`;
+}
+
 function updateLevelHint() {
   const hint = $("level-hint");
   if (state.levels.size === 0) {
@@ -151,7 +156,8 @@ function updateLevelHint() {
     return;
   }
   const names = [...state.levels].sort().map((l) => LEVEL_NAMES[l]).join(" + ");
-  hint.textContent = `${names} — ${levelPool().length} flags in play`;
+  const pool = levelPool();
+  hint.textContent = `${names} — ${pool.length} flags in play · ${pointsRange(pool)} per flag`;
 }
 
 function refreshLevelButtons() {
@@ -166,7 +172,9 @@ function buildLevelPicker() {
   for (let lv = 1; lv <= 5; lv++) {
     const btn = document.createElement("button");
     btn.className = "level-btn" + (state.levels.has(lv) ? " selected" : "");
-    btn.innerHTML = `<span class="lv-num">${lv}</span>${LEVEL_NAMES[lv]}`;
+    const range = pointsRange(COUNTRIES.filter((c) => c.level === lv));
+    btn.innerHTML =
+      `<span class="lv-num">${lv}</span>${LEVEL_NAMES[lv]}<span class="lv-pts">${range}</span>`;
     btn.title = LEVEL_HINTS[lv];
     btn.addEventListener("click", () => {
       if (state.levels.has(lv)) state.levels.delete(lv);

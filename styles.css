@@ -192,6 +192,14 @@ header {
   font-weight: 700;
   color: var(--accent);
 }
+.level-btn .lv-pts {
+  display: block;
+  margin-top: 3px;
+  color: var(--brass);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
 .level-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 .level-btn.selected {
   border: 2px solid var(--accent);
@@ -212,6 +220,8 @@ header {
 .mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .level-hint { color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
+.tier-note { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin-top: 2px; }
+.tier-note b { color: var(--brass); }
 .level-hint.shake { animation: shake 0.35s; color: var(--bad); }
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
