@@ -16,6 +16,13 @@ const capitalBonus = (c) => Math.round(c.points / 2);
 
 const $ = (id) => document.getElementById(id);
 
+// On touch devices, focusing the input opens the keyboard and shoves the flag
+// off-screen — only auto-focus when a fine pointer (mouse/trackpad) is present.
+const COARSE_POINTER = window.matchMedia("(pointer: coarse)").matches;
+function focusInput(el) {
+  if (!COARSE_POINTER) el.focus();
+}
+
 function normalize(str) {
   return str
     .toLowerCase()
@@ -311,7 +318,8 @@ function nextQuestion() {
   updateHintButton();
   hideSuggestions();
   updateStats();
-  $("quiz-input").focus();
+  window.scrollTo(0, 0); // bring the new flag back into view on small screens
+  focusInput($("quiz-input"));
 }
 
 function hintsLeftNow() {
@@ -449,7 +457,8 @@ function startCapitalStage() {
   $("quiz-reveal").classList.remove("hidden");
   $("quiz-next").classList.add("hidden");
   updateHintButton(); // hides it (country stage only)
-  $("quiz-input").focus();
+  window.scrollTo(0, 0);
+  focusInput($("quiz-input"));
 }
 
 function giveUp() {
@@ -597,7 +606,7 @@ function useHint() {
   box.classList.remove("hidden");
   updateHintButton();
   updateStats();
-  $("quiz-input").focus();
+  focusInput($("quiz-input"));
 }
 
 // ---------- game over & high scores ----------
@@ -677,7 +686,8 @@ function gameOver() {
   } catch { /* ignore */ }
   renderHighScores($("over-highscores"));
   showScreen("over");
-  $("over-name").focus();
+  window.scrollTo(0, 0);
+  focusInput($("over-name"));
 }
 
 function saveScore(e) {

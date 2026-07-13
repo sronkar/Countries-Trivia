@@ -560,8 +560,42 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
   * { animation: none !important; transition: none !important; }
 }
 
-@media (max-width: 500px) {
-  .answer-area, .duel-names { flex-direction: column; }
-  .quiz-card { padding: 18px 14px; }
-  .masthead h1 { font-size: 1.5rem; }
+/* Compact phone layout: the flag, prompt and input must all fit above the
+   on-screen keyboard, so everything tightens up and the flag shrinks. */
+@media (max-width: 520px) {
+  body { padding: 0 10px 40px; }
+  .duel-names { flex-direction: column; }
+
+  header { padding: 10px 0 4px; }
+  .masthead h1 { font-size: 1.25rem; }
+  .masthead h1::before { font-size: 1rem; }
+  .masthead-sub { display: none; }
+  .icon-btn { width: 32px; height: 32px; font-size: 0.9rem; }
+  .header-tools { padding-top: 0; }
+  .ghost-btn { padding: 7px 12px; font-size: 0.82rem; }
+
+  .statusbar { gap: 10px; margin-bottom: 8px; }
+  .badge { font-size: 0.72rem; padding: 3px 10px; }
+  .stat { font-size: 0.68rem; }
+  .duel-bar { margin-bottom: 8px; gap: 8px; }
+  .duel-player { padding: 5px 10px; font-size: 0.9rem; }
+
+  .quiz-card { padding: 12px 12px 14px; gap: 9px; }
+  #quiz-image-wrap, #learn-image-wrap {
+    min-height: 0;
+    padding: 8px;
+    max-width: 250px;
+  }
+  #quiz-image, #learn-flag { max-height: 130px; }
+  .tier-chip { font-size: 0.62rem; padding: 4px 10px; }
+  .quiz-prompt { font-size: 1.02rem; }
+
+  .answer-area { flex-direction: column; gap: 8px; }
+  #quiz-input { padding: 10px 12px; }
+  .primary-btn { padding: 10px 18px; }
+  .quiz-actions { gap: 8px; margin-top: 0; }
+  .suggestions { max-height: 165px; }
+  .hint-box { padding: 10px 12px; }
+
+  .over-title { font-size: 1.4rem; }
 }
