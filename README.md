@@ -21,7 +21,7 @@ python3 -m http.server 8000
   - **Result tracking**: the game records per-country outcomes (times shown, guessed %, capital %, hints used). The menu's "Your results" panel shows them and can export JSON — if a "hard" country is guessed right 100% of the time, demote its tier.
   - **2 hints per game**: on well-known countries (levels 1–3) a hint narrows the answer to 3 choices; on obscure ones (levels 4–5) it reveals the geographical location (e.g. "the Caribbean", "the South Pacific").
   - **High scores** are saved locally — enter your name on the game-over screen; the top 10 table shows on the menu.
-- **2 Players** — duel mode: enter two names and a target score (your choice, default 100). Players alternate full turns (one flag each: country + capital), first to reach the target wins. No lives; each player gets their own 2 hints. Duel results don't enter the solo high-score table.
+- **2 Players** — duel mode: enter two names and a target score (your choice, default 100). Players alternate full turns (one flag each: country + capital), first to reach the target wins. No lives; each player gets their own 2 hints. **Fair rounds**: each round deals both players flags from the same point tier (adjacent tier at worst), so nobody gets a 5-point flag while their opponent draws a 100-pointer. Duel results don't enter the solo high-score table.
 - **Knowledge** — study mode: a flag is shown; click the card to reveal the country name, click again to reveal the capital, click again for the next card.
 
 The app follows your OS light/dark preference, and the ◐ button in the header switches theme manually (remembered between visits).

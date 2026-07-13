@@ -239,9 +239,31 @@ function startDuel() {
   beginGame();
 }
 
+// Duel decks are dealt in rounds of two same-tier flags, so each turn both
+// players compete for (nearly) the same points. Leftover singles per tier are
+// paired with the nearest tier; a final unpaired flag is dropped so both
+// players always face the same number of questions.
+function buildDuelDeck(pool) {
+  const byTier = {};
+  shuffle(pool).forEach((c) => (byTier[c.tier] = byTier[c.tier] || []).push(c));
+  const tiers = Object.keys(byTier).map(Number).sort((a, b) => a - b);
+  const pairs = [];
+  let carry = null; // an odd tier's spare pairs with the next tier up
+  for (const tier of tiers) {
+    const group = byTier[tier];
+    if (carry) {
+      pairs.push([carry, group.pop()]);
+      carry = null;
+    }
+    while (group.length >= 2) pairs.push([group.pop(), group.pop()]);
+    if (group.length) carry = group.pop();
+  }
+  return shuffle(pairs).flat();
+}
+
 function beginGame() {
   state.mode = "flag";
-  state.deck = shuffle(levelPool());
+  state.deck = state.duel ? buildDuelDeck(levelPool()) : shuffle(levelPool());
   state.deckPos = 0;
   state.score = 0;
   state.countriesRight = 0;
