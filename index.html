@@ -47,6 +47,16 @@
       <h2>🏆 High scores</h2>
       <div id="menu-highscores"></div>
     </div>
+
+    <div class="menu-block">
+      <h2>📊 Your results <span class="h2-note">— per-country success rates, for re-tuning point tiers</span></h2>
+      <div class="level-tools">
+        <button id="stats-toggle" class="mini-btn">Show stats</button>
+        <button id="stats-export" class="mini-btn">Download JSON</button>
+        <button id="stats-reset" class="mini-btn">Reset</button>
+      </div>
+      <div id="stats-panel" class="hs-wrap hidden"></div>
+    </div>
   </section>
 
   <!-- ============ Quiz screen (trivia mode) ============ -->
@@ -64,6 +74,7 @@
         <img id="quiz-image" alt="Guess this country" draggable="false">
       </div>
 
+      <p id="quiz-tier" class="tier-chip"></p>
       <p id="quiz-prompt" class="quiz-prompt"></p>
 
       <div class="answer-area">

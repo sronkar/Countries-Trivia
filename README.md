@@ -16,7 +16,9 @@ python3 -m http.server 8000
 ## Modes
 
 - **Trivia** — a flag is shown; type the country name (autocomplete suggestions appear as you type), then guess its capital city. 3 tries per step, and after every answer you click **Next** to move on.
-  - **3 missed countries ends the game.** Your score is the number of countries you named correctly (capitals are tracked separately and used as a tiebreaker). Countries never repeat within a game.
+  - **3 missed countries ends the game.** Countries never repeat within a game.
+  - **Tiered points**: every country sits in one of 8 point tiers (5–100 pts) reflecting how hard it actually is to name — related to, but not locked to, its game level (Greenland is level 5 but famous, so it pays less than Pitcairn). Naming the capital earns a 50% bonus. Tiers live in `data.js` (`TIER_OVERRIDES`) and are meant to be re-tuned over time.
+  - **Result tracking**: the game records per-country outcomes (times shown, guessed %, capital %, hints used). The menu's "Your results" panel shows them and can export JSON — if a "hard" country is guessed right 100% of the time, demote its tier.
   - **2 hints per game**: on well-known countries (levels 1–3) a hint narrows the answer to 3 choices; on obscure ones (levels 4–5) it reveals the geographical location (e.g. "the Caribbean", "the South Pacific").
   - **High scores** are saved locally — enter your name on the game-over screen; the top 10 table shows on the menu.
 - **Knowledge** — study mode: a flag is shown; click the card to reveal the country name, click again to reveal the capital, click again for the next card.

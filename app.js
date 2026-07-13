@@ -9,6 +9,8 @@ const MAX_SUGGESTIONS = 8;
 const EASY_HINT_MAX_LEVEL = 3; // levels 1-3 hint = multiple choice; 4-5 hint = region
 const HS_KEY = "ct-highscores";
 const NAME_KEY = "ct-player-name";
+const STATS_KEY = "ct-country-stats";
+const capitalBonus = (c) => Math.round(c.points / 2);
 
 // ---------- helpers ----------
 
@@ -52,7 +54,8 @@ const state = {
   current: null,
   stage: "country",    // "country" | "capital" | "done" | "over"
   attempts: 0,
-  score: 0,            // countries guessed correctly
+  score: 0,            // total points (tiered per country + capital bonus)
+  countriesRight: 0,   // countries guessed correctly
   capitals: 0,         // capitals guessed correctly
   wrong: 0,            // countries missed (game over at MAX_WRONG)
   hintsLeft: MAX_HINTS,
@@ -209,6 +212,7 @@ function startQuiz() {
   state.deck = shuffle(levelPool());
   state.deckPos = 0;
   state.score = 0;
+  state.countriesRight = 0;
   state.capitals = 0;
   state.wrong = 0;
   state.hintsLeft = MAX_HINTS;
@@ -231,6 +235,7 @@ function nextQuestion() {
   state.questionNum++;
 
   $("quiz-image").src = FLAG_URL(state.current.code);
+  $("quiz-tier").textContent = `Tier ${state.current.tier} · worth ${state.current.points} pts`;
   $("quiz-prompt").textContent = "Which country does this flag belong to?";
   setFeedback("", "");
   $("quiz-input").value = "";
@@ -279,14 +284,17 @@ function submitGuess() {
 
   if (state.stage === "country") {
     if (countryAnswers(c).includes(guess)) {
-      state.score++;
-      setFeedback(`✔ Correct! It's ${c.name}.`, "good");
+      state.score += c.points;
+      state.countriesRight++;
+      recordResult(c.code, { seen: 1, right: 1, hinted: state.hintedThisQuestion ? 1 : 0 });
+      setFeedback(`✔ Correct! It's ${c.name}. +${c.points} pts`, "good");
       pauseForNext("Next: guess the capital ➜");
       state.afterNext = "capital";
     } else {
       state.attempts++;
       if (state.attempts >= MAX_ATTEMPTS) {
         state.wrong++;
+        recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
         setFeedback(`✘ Wrong — it was ${c.name} (capital: ${c.capital}).`, "bad");
         pauseForNext(nextLabel());
         state.afterNext = "question";
@@ -298,7 +306,9 @@ function submitGuess() {
   } else {
     if (capitalAnswers(c).includes(guess)) {
       state.capitals++;
-      setFeedback(`✔ Correct! The capital of ${c.name} is ${c.capital}.`, "good");
+      state.score += capitalBonus(c);
+      recordResult(c.code, { capSeen: 1, capRight: 1 });
+      setFeedback(`✔ Correct! The capital of ${c.name} is ${c.capital}. +${capitalBonus(c)} pts bonus`, "good");
     } else {
       state.attempts++;
       if (state.attempts < MAX_ATTEMPTS) {
@@ -307,6 +317,7 @@ function submitGuess() {
         updateStats();
         return;
       }
+      recordResult(c.code, { capSeen: 1, capRight: 0 });
       setFeedback(`✘ Wrong — the capital of ${c.name} is ${c.capital}.`, "bad");
     }
     pauseForNext(nextLabel());
@@ -362,15 +373,102 @@ function giveUp() {
   const c = state.current;
   if (state.stage === "country") {
     state.wrong++;
+    recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
     setFeedback(`It was ${c.name} (capital: ${c.capital}).`, "bad");
     pauseForNext(nextLabel());
     state.afterNext = "question";
   } else if (state.stage === "capital") {
+    recordResult(c.code, { capSeen: 1, capRight: 0 });
     setFeedback(`The capital of ${c.name} is ${c.capital}.`, "bad");
     pauseForNext(nextLabel());
     state.afterNext = "question";
   }
   updateStats();
+}
+
+// ---------- per-country result tracking (for re-tuning tiers over time) ----------
+
+function loadResultStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveResultStats(all) {
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify(all));
+  } catch { /* storage unavailable */ }
+}
+
+function recordResult(code, patch) {
+  const all = loadResultStats();
+  const s = all[code] || { seen: 0, right: 0, capSeen: 0, capRight: 0, hinted: 0 };
+  for (const k of Object.keys(patch)) s[k] = (s[k] || 0) + patch[k];
+  all[code] = s;
+  saveResultStats(all);
+}
+
+function statsRows() {
+  const all = loadResultStats();
+  return COUNTRIES.filter((c) => all[c.code])
+    .map((c) => {
+      const s = all[c.code];
+      return {
+        code: c.code,
+        name: c.name,
+        level: c.level,
+        tier: c.tier,
+        points: c.points,
+        seen: s.seen,
+        right: s.right,
+        countryPct: s.seen ? Math.round((100 * s.right) / s.seen) : null,
+        capSeen: s.capSeen,
+        capRight: s.capRight,
+        capitalPct: s.capSeen ? Math.round((100 * s.capRight) / s.capSeen) : null,
+        hinted: s.hinted,
+      };
+    })
+    .sort((a, b) => b.seen - a.seen || a.name.localeCompare(b.name));
+}
+
+function renderStatsPanel() {
+  const panel = $("stats-panel");
+  const rows = statsRows();
+  if (rows.length === 0) {
+    panel.innerHTML = '<p class="hs-empty">No games recorded yet — play some trivia first.</p>';
+    return;
+  }
+  const body = rows
+    .map(
+      (r) => `<tr>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${r.tier}</td>
+        <td>${r.seen}</td>
+        <td>${r.countryPct === null ? "—" : r.countryPct + "%"}</td>
+        <td>${r.capitalPct === null ? "—" : r.capitalPct + "%"}</td>
+        <td>${r.hinted}</td>
+      </tr>`
+    )
+    .join("");
+  panel.innerHTML = `<div class="hs-scroll"><table class="hs-table">
+    <thead><tr><th>Country</th><th>Tier</th><th>Seen</th><th>Guessed</th><th>Capital</th><th>Hints</th></tr></thead>
+    <tbody>${body}</tbody></table></div>`;
+}
+
+function exportStats() {
+  const payload = {
+    exported: new Date().toISOString(),
+    tierPoints: TIER_POINTS,
+    countries: statsRows(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "countries-trivia-stats.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ---------- hints ----------
@@ -446,6 +544,7 @@ function renderHighScores(container) {
         <td>${i + 1}</td>
         <td>${escapeHtml(s.name)}</td>
         <td>${s.score}</td>
+        <td>${s.countries ?? "—"}</td>
         <td>${s.capitals}</td>
         <td>${escapeHtml(s.levels)}</td>
         <td>${escapeHtml(s.date)}</td>
@@ -453,7 +552,7 @@ function renderHighScores(container) {
     )
     .join("");
   container.innerHTML = `<div class="hs-scroll"><table class="hs-table">
-    <thead><tr><th>#</th><th>Name</th><th>Countries</th><th>Capitals</th><th>Levels</th><th>Date</th></tr></thead>
+    <thead><tr><th>#</th><th>Name</th><th>Points</th><th>Countries</th><th>Capitals</th><th>Levels</th><th>Date</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 
@@ -466,8 +565,9 @@ function gameOver() {
   const cleared = state.wrong < MAX_WRONG;
   $("over-title").textContent = cleared ? "🎉 You cleared every flag!" : "Game over!";
   $("over-summary").textContent =
-    `You named ${state.score} ${state.score === 1 ? "country" : "countries"} correctly ` +
-    `(and ${state.capitals} ${state.capitals === 1 ? "capital" : "capitals"}) ` +
+    `You scored ${state.score} points: ` +
+    `${state.countriesRight} ${state.countriesRight === 1 ? "country" : "countries"} ` +
+    `(and ${state.capitals} ${state.capitals === 1 ? "capital" : "capitals"}) named correctly ` +
     `out of ${state.questionNum} flags — ${levelsLabel()}.`;
   $("over-save-form").classList.remove("hidden");
   $("over-saved").classList.add("hidden");
@@ -490,6 +590,7 @@ function saveScore(e) {
   list.push({
     name,
     score: state.score,
+    countries: state.countriesRight,
     capitals: state.capitals,
     levels: levelsLabel().replace("Level ", ""),
     date: new Date().toLocaleDateString(),
@@ -586,6 +687,22 @@ document.addEventListener("keydown", (e) => {
 });
 
 $("over-save-form").addEventListener("submit", saveScore);
+
+$("stats-toggle").addEventListener("click", () => {
+  const panel = $("stats-panel");
+  const show = panel.classList.contains("hidden");
+  if (show) renderStatsPanel();
+  panel.classList.toggle("hidden", !show);
+  $("stats-toggle").textContent = show ? "Hide stats" : "Show stats";
+});
+$("stats-export").addEventListener("click", exportStats);
+$("stats-reset").addEventListener("click", () => {
+  if (!confirm("Reset all recorded country results?")) return;
+  try {
+    localStorage.removeItem(STATS_KEY);
+  } catch { /* ignore */ }
+  renderStatsPanel();
+});
 $("over-again").addEventListener("click", startQuiz);
 $("over-menu").addEventListener("click", () => {
   renderHighScores($("menu-highscores"));

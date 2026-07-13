@@ -252,11 +252,49 @@ const COUNTRY_ROWS = [
   ["eh", "Western Sahara", "Laayoune", 5, "North Africa (Atlantic coast of the Sahara)", [], ["El Aaiun", "El Aaiún"]],
 ];
 
-const COUNTRIES = COUNTRY_ROWS.map(([code, name, capital, level, region, aliases, capitalAliases]) => ({
-  code, name, capital, level, region,
-  aliases: aliases || [],
-  capitalAliases: capitalAliases || [],
-}));
+// ---------- point tiers ----------
+// Points are tiered by how hard a country actually is to name, which is
+// related to — but deliberately NOT locked to — its game level. Tiers are
+// meant to be re-tuned over time from the per-country result stats the game
+// records (see the Stats panel / JSON export): if a "hard" country is being
+// guessed right nearly every time, demote its tier here.
+
+const TIER_POINTS = { 1: 5, 2: 10, 3: 15, 4: 25, 5: 35, 6: 50, 7: 70, 8: 100 };
+
+// default tier for each game level...
+const BASE_TIER_BY_LEVEL = { 1: 1, 2: 3, 3: 4, 4: 6, 5: 7 };
+
+// ...with per-country adjustments where recognisability doesn't match level.
+const TIER_OVERRIDES = {
+  // level 1 flags that are less iconic than their neighbours
+  pt: 2, ie: 2, nz: 2, no: 2,
+  // level 2 countries with very distinctive, widely known flags
+  cu: 2, jm: 2, dk: 2, ua: 2, cz: 2,
+  // level 2 countries with easily confused flags
+  sk: 4, bg: 4, rs: 4, af: 4,
+  // level 3 easier than average
+  np: 3, mt: 3, cy: 3,
+  // level 3 harder than average
+  md: 5, mk: 5, ba: 5, la: 5,
+  // level 4 with famous names or unmistakable flags
+  va: 5, pg: 5, bt: 5, mu: 5,
+  // level 4 genuinely tough
+  cf: 7, gw: 7, km: 7,
+  // level 5 territories most people have heard of
+  gl: 6, gi: 6, bm: 6, aw: 6, pf: 6,
+  // level 5 truly obscure — top tier
+  pn: 8, tk: 8, wf: 8, nu: 8, gs: 8, cc: 8, cx: 8, sh: 8, pm: 8, mp: 8, ax: 8,
+};
+
+const COUNTRIES = COUNTRY_ROWS.map(([code, name, capital, level, region, aliases, capitalAliases]) => {
+  const tier = TIER_OVERRIDES[code] || BASE_TIER_BY_LEVEL[level];
+  return {
+    code, name, capital, level, region, tier,
+    points: TIER_POINTS[tier],
+    aliases: aliases || [],
+    capitalAliases: capitalAliases || [],
+  };
+});
 
 const LEVEL_NAMES = {
   1: "Beginner",
