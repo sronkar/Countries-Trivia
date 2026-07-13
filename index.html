@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Countries Trivia</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1 id="app-title">🌍 Countries Trivia</h1>
+    <button id="home-btn" class="ghost-btn hidden" title="Back to menu">☰ Menu</button>
+  </header>
+
+  <!-- ============ Menu screen ============ -->
+  <section id="screen-menu" class="screen">
+    <p class="tagline">How well do you know the world?</p>
+
+    <div class="menu-block">
+      <h2>Difficulty</h2>
+      <div id="level-picker" class="level-picker"></div>
+      <p id="level-hint" class="level-hint"></p>
+    </div>
+
+    <div class="menu-block">
+      <h2>Game mode</h2>
+      <div class="mode-grid">
+        <button class="mode-card" data-mode="flag">
+          <span class="mode-emoji">🚩</span>
+          <span class="mode-name">Trivia</span>
+          <span class="mode-desc">See a flag, name the country, then its capital</span>
+        </button>
+        <button class="mode-card" data-mode="learn">
+          <span class="mode-emoji">📖</span>
+          <span class="mode-name">Knowledge</span>
+          <span class="mode-desc">Study mode: see a flag, click for the country, click again for the capital</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Quiz screen (flag & map modes) ============ -->
+  <section id="screen-quiz" class="screen hidden">
+    <div class="statusbar">
+      <span id="quiz-level-badge" class="badge"></span>
+      <span class="stat">Score <b id="stat-score">0</b></span>
+      <span class="stat">Streak <b id="stat-streak">0</b></span>
+      <span class="stat">Question <b id="stat-question">1</b></span>
+    </div>
+
+    <div class="quiz-card">
+      <div id="quiz-image-wrap">
+        <img id="quiz-image" alt="Guess this country" draggable="false">
+      </div>
+
+      <p id="quiz-prompt" class="quiz-prompt"></p>
+
+      <div class="answer-area">
+        <div class="autocomplete-wrap">
+          <input id="quiz-input" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Start typing...">
+          <ul id="quiz-suggestions" class="suggestions hidden"></ul>
+        </div>
+        <button id="quiz-submit" class="primary-btn">Guess</button>
+      </div>
+
+      <p id="quiz-feedback" class="feedback"></p>
+
+      <div class="quiz-actions">
+        <button id="quiz-reveal" class="ghost-btn">Reveal answer</button>
+        <button id="quiz-next" class="primary-btn hidden">Next ➜</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Knowledge screen ============ -->
+  <section id="screen-learn" class="screen hidden">
+    <div class="statusbar">
+      <span id="learn-level-badge" class="badge"></span>
+      <span class="stat">Card <b id="learn-progress">1</b></span>
+    </div>
+
+    <div id="learn-card" class="quiz-card learn-card" title="Click to reveal">
+      <div id="learn-image-wrap">
+        <img id="learn-flag" alt="Country flag" draggable="false">
+      </div>
+      <p id="learn-name" class="learn-name">&nbsp;</p>
+      <p id="learn-capital" class="learn-capital">&nbsp;</p>
+      <p id="learn-hint" class="learn-hint">Click the card to reveal the country</p>
+    </div>
+
+    <div class="quiz-actions">
+      <button id="learn-prev" class="ghost-btn">← Previous</button>
+      <button id="learn-next" class="primary-btn">Next →</button>
+    </div>
+  </section>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
