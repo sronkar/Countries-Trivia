@@ -9,13 +9,19 @@
 </head>
 <body>
   <header>
-    <h1 id="app-title">🌍 Countries Trivia</h1>
-    <button id="home-btn" class="ghost-btn hidden" title="Back to menu">☰ Menu</button>
+    <div class="masthead">
+      <h1 id="app-title">Countries Trivia</h1>
+      <p class="masthead-sub">A field guide to flags &amp; capitals</p>
+    </div>
+    <div class="header-tools">
+      <button id="theme-btn" class="icon-btn" title="Switch light/dark theme">◐</button>
+      <button id="home-btn" class="ghost-btn hidden" title="Back to menu">☰ Menu</button>
+    </div>
   </header>
 
   <!-- ============ Menu screen ============ -->
   <section id="screen-menu" class="screen">
-    <p class="tagline">How well do you know the world?</p>
+    <p class="tagline">How well do you know the world? Chart your course below.</p>
 
     <div class="menu-block">
       <h2>Difficulty <span class="h2-note">— pick one or more levels</span></h2>
@@ -35,11 +41,30 @@
           <span class="mode-name">Trivia</span>
           <span class="mode-desc">Name the country from its flag, then its capital. 3 misses and the game is over!</span>
         </button>
+        <button class="mode-card" data-mode="duel">
+          <span class="mode-emoji">⚔️</span>
+          <span class="mode-name">2 Players</span>
+          <span class="mode-desc">Take turns guessing flags — first to reach the target points wins</span>
+        </button>
         <button class="mode-card" data-mode="learn">
           <span class="mode-emoji">📖</span>
           <span class="mode-name">Knowledge</span>
           <span class="mode-desc">Study mode: see a flag, click for the country, click again for the capital</span>
         </button>
+      </div>
+    </div>
+
+    <div id="duel-setup" class="menu-block hidden">
+      <h2>⚔️ 2-player duel</h2>
+      <div class="duel-form">
+        <div class="duel-names">
+          <input id="duel-p1" type="text" maxlength="20" placeholder="Player 1 name" autocomplete="off">
+          <input id="duel-p2" type="text" maxlength="20" placeholder="Player 2 name" autocomplete="off">
+        </div>
+        <label class="duel-target-label">First to
+          <input id="duel-target" type="number" min="10" max="9999" value="100"> points
+        </label>
+        <button id="duel-start" class="primary-btn">Start duel</button>
       </div>
     </div>
 
@@ -63,11 +88,12 @@
   <section id="screen-quiz" class="screen hidden">
     <div class="statusbar">
       <span id="quiz-level-badge" class="badge"></span>
-      <span class="stat">Score <b id="stat-score">0</b></span>
-      <span class="stat" title="Wrong countries allowed">Lives <b id="stat-lives">❤❤❤</b></span>
+      <span class="stat" id="wrap-score">Score <b id="stat-score">0</b></span>
+      <span class="stat" id="wrap-lives" title="Wrong countries allowed">Lives <b id="stat-lives">❤❤❤</b></span>
       <span class="stat">Hints <b id="stat-hints">2</b></span>
       <span class="stat">Flag <b id="stat-question">1</b></span>
     </div>
+    <div id="duel-bar" class="duel-bar hidden"></div>
 
     <div class="quiz-card">
       <div id="quiz-image-wrap">

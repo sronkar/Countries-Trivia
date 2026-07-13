@@ -62,6 +62,8 @@ const state = {
   hintedThisQuestion: false,
   questionNum: 0,
   saved: false,
+  // 2-player duel: null in solo, else {players:[{name,score,hints}...], turn, target}
+  duel: null,
   // learn state
   learnDeck: [],
   learnPos: 0,
@@ -206,8 +208,38 @@ function moveActive(delta) {
 
 // ---------- trivia game flow ----------
 
+const duelP = () => state.duel.players[state.duel.turn];
+const duelOther = () => state.duel.players[1 - state.duel.turn];
+const duelLeader = () =>
+  state.duel.players[0].score >= state.duel.players[1].score ? state.duel.players[0] : state.duel.players[1];
+const duelWon = () => state.duel.players.some((p) => p.score >= state.duel.target);
+
 function startQuiz() {
   if (!requireLevels()) return;
+  state.duel = null;
+  beginGame();
+}
+
+function startDuel() {
+  if (!requireLevels()) return;
+  const p1 = $("duel-p1").value.trim() || "Player 1";
+  const p2 = $("duel-p2").value.trim() || "Player 2";
+  const target = Math.max(10, parseInt($("duel-target").value, 10) || 100);
+  try {
+    localStorage.setItem("ct-duel-names", JSON.stringify([p1, p2]));
+  } catch { /* ignore */ }
+  state.duel = {
+    players: [
+      { name: p1, score: 0, hints: MAX_HINTS },
+      { name: p2, score: 0, hints: MAX_HINTS },
+    ],
+    turn: 0,
+    target,
+  };
+  beginGame();
+}
+
+function beginGame() {
   state.mode = "flag";
   state.deck = shuffle(levelPool());
   state.deckPos = 0;
@@ -218,13 +250,20 @@ function startQuiz() {
   state.hintsLeft = MAX_HINTS;
   state.questionNum = 0;
   state.saved = false;
-  $("quiz-level-badge").textContent = `${levelsLabel()} · Trivia`;
+  $("quiz-level-badge").textContent =
+    `${levelsLabel()} · ` + (state.duel ? `Duel to ${state.duel.target}` : "Trivia");
+  $("wrap-score").classList.toggle("hidden", !!state.duel);
+  $("wrap-lives").classList.toggle("hidden", !!state.duel);
+  $("duel-bar").classList.toggle("hidden", !state.duel);
   showScreen("quiz");
   nextQuestion();
 }
 
 function nextQuestion() {
-  if (state.wrong >= MAX_WRONG || state.deckPos >= state.deck.length) {
+  const finished = state.duel
+    ? duelWon() || state.deckPos >= state.deck.length
+    : state.wrong >= MAX_WRONG || state.deckPos >= state.deck.length;
+  if (finished) {
     gameOver();
     return;
   }
@@ -236,7 +275,8 @@ function nextQuestion() {
 
   $("quiz-image").src = FLAG_URL(state.current.code);
   $("quiz-tier").textContent = `Tier ${state.current.tier} · worth ${state.current.points} pts`;
-  $("quiz-prompt").textContent = "Which country does this flag belong to?";
+  $("quiz-prompt").textContent =
+    (state.duel ? `${duelP().name} — w` : "W") + "hich country does this flag belong to?";
   setFeedback("", "");
   $("quiz-input").value = "";
   $("quiz-input").placeholder = "Type a country name...";
@@ -252,20 +292,33 @@ function nextQuestion() {
   $("quiz-input").focus();
 }
 
+function hintsLeftNow() {
+  return state.duel ? duelP().hints : state.hintsLeft;
+}
+
 function updateStats() {
   $("stat-score").textContent = state.score;
   $("stat-lives").textContent =
     "❤".repeat(MAX_WRONG - state.wrong) + "♡".repeat(state.wrong);
-  $("stat-hints").textContent = state.hintsLeft;
+  $("stat-hints").textContent = hintsLeftNow();
   $("stat-question").textContent = `${state.questionNum} / ${state.deck.length}`;
+  if (state.duel) {
+    $("duel-bar").innerHTML = state.duel.players
+      .map(
+        (p, i) =>
+          `<span class="duel-player${i === state.duel.turn ? " active" : ""}">${escapeHtml(p.name)} <b>${p.score}</b></span>`
+      )
+      .join('<span class="duel-vs">vs</span>') +
+      `<span class="duel-target">first to ${state.duel.target}</span>`;
+  }
 }
 
 function updateHintButton() {
   const btn = $("quiz-hint");
-  const usable = state.stage === "country" && state.hintsLeft > 0 && !state.hintedThisQuestion;
+  const usable = state.stage === "country" && hintsLeftNow() > 0 && !state.hintedThisQuestion;
   btn.classList.toggle("hidden", state.stage !== "country");
   btn.disabled = !usable;
-  btn.textContent = `💡 Hint (${state.hintsLeft} left)`;
+  btn.textContent = `💡 Hint (${hintsLeftNow()} left)`;
 }
 
 function setFeedback(text, kind) {
@@ -284,7 +337,8 @@ function submitGuess() {
 
   if (state.stage === "country") {
     if (countryAnswers(c).includes(guess)) {
-      state.score += c.points;
+      if (state.duel) duelP().score += c.points;
+      else state.score += c.points;
       state.countriesRight++;
       recordResult(c.code, { seen: 1, right: 1, hinted: state.hintedThisQuestion ? 1 : 0 });
       setFeedback(`✔ Correct! It's ${c.name}. +${c.points} pts`, "good");
@@ -293,7 +347,7 @@ function submitGuess() {
     } else {
       state.attempts++;
       if (state.attempts >= MAX_ATTEMPTS) {
-        state.wrong++;
+        if (!state.duel) state.wrong++;
         recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
         setFeedback(`✘ Wrong — it was ${c.name} (capital: ${c.capital}).`, "bad");
         pauseForNext(nextLabel());
@@ -306,7 +360,8 @@ function submitGuess() {
   } else {
     if (capitalAnswers(c).includes(guess)) {
       state.capitals++;
-      state.score += capitalBonus(c);
+      if (state.duel) duelP().score += capitalBonus(c);
+      else state.score += capitalBonus(c);
       recordResult(c.code, { capSeen: 1, capRight: 1 });
       setFeedback(`✔ Correct! The capital of ${c.name} is ${c.capital}. +${capitalBonus(c)} pts bonus`, "good");
     } else {
@@ -327,6 +382,10 @@ function submitGuess() {
 }
 
 function nextLabel() {
+  if (state.duel) {
+    if (duelWon() || state.deckPos >= state.deck.length) return "See results ➜";
+    return `Next: ${duelOther().name}'s turn ➜`;
+  }
   if (state.wrong >= MAX_WRONG || state.deckPos >= state.deck.length) return "See results ➜";
   return "Next flag ➜";
 }
@@ -349,6 +408,7 @@ function onNext() {
   if (state.afterNext === "capital") {
     startCapitalStage();
   } else {
+    if (state.duel) state.duel.turn = 1 - state.duel.turn; // hand over the flag
     nextQuestion();
   }
 }
@@ -357,7 +417,8 @@ function startCapitalStage() {
   const c = state.current;
   state.stage = "capital";
   state.attempts = 0;
-  $("quiz-prompt").textContent = `What is the capital of ${c.name}?`;
+  $("quiz-prompt").textContent =
+    (state.duel ? `${duelP().name} — w` : "W") + `hat is the capital of ${c.name}?`;
   setFeedback("", "");
   $("quiz-input").value = "";
   $("quiz-input").placeholder = "Type a capital city...";
@@ -372,7 +433,7 @@ function startCapitalStage() {
 function giveUp() {
   const c = state.current;
   if (state.stage === "country") {
-    state.wrong++;
+    if (!state.duel) state.wrong++;
     recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
     setFeedback(`It was ${c.name} (capital: ${c.capital}).`, "bad");
     pauseForNext(nextLabel());
@@ -474,8 +535,9 @@ function exportStats() {
 // ---------- hints ----------
 
 function useHint() {
-  if (state.stage !== "country" || state.hintsLeft <= 0 || state.hintedThisQuestion) return;
-  state.hintsLeft--;
+  if (state.stage !== "country" || hintsLeftNow() <= 0 || state.hintedThisQuestion) return;
+  if (state.duel) duelP().hints--;
+  else state.hintsLeft--;
   state.hintedThisQuestion = true;
   const c = state.current;
   const box = $("hint-box");
@@ -562,6 +624,23 @@ function escapeHtml(s) {
 
 function gameOver() {
   state.stage = "over";
+
+  if (state.duel) {
+    const [a, b] = state.duel.players;
+    const tie = a.score === b.score;
+    $("over-title").textContent = tie ? "🤝 It's a tie!" : `🏆 ${duelLeader().name} wins!`;
+    $("over-summary").textContent =
+      `${a.name} ${a.score} — ${b.score} ${b.name} · first to ${state.duel.target} · ` +
+      `${levelsLabel()} · ${state.questionNum} flags played.`;
+    // duel results aren't comparable to solo runs — no high-score entry
+    $("over-save-form").classList.add("hidden");
+    $("over-saved").classList.add("hidden");
+    $("over-highscores").innerHTML = "";
+    showScreen("over");
+    $("over-again").focus();
+    return;
+  }
+
   const cleared = state.wrong < MAX_WRONG;
   $("over-title").textContent = cleared ? "🎉 You cleared every flag!" : "Game over!";
   $("over-summary").textContent =
@@ -648,15 +727,48 @@ function learnStep(delta) {
 
 // ---------- wiring ----------
 
+// theme: honor a saved choice; otherwise follow the OS (or the artifact viewer's toggle)
+const THEME_KEY = "ct-theme";
+try {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) document.documentElement.dataset.theme = saved;
+} catch { /* ignore */ }
+$("theme-btn").addEventListener("click", () => {
+  const root = document.documentElement;
+  const current =
+    root.dataset.theme ||
+    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = current === "dark" ? "light" : "dark";
+  root.dataset.theme = next;
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch { /* ignore */ }
+});
+
 buildLevelPicker();
 renderHighScores($("menu-highscores"));
 
 document.querySelectorAll(".mode-card").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (btn.dataset.mode === "learn") startLearn();
-    else startQuiz();
+    else if (btn.dataset.mode === "duel") {
+      if (!requireLevels()) return;
+      const setup = $("duel-setup");
+      setup.classList.toggle("hidden");
+      if (!setup.classList.contains("hidden")) {
+        try {
+          const [p1, p2] = JSON.parse(localStorage.getItem("ct-duel-names")) || [];
+          if (p1 && !$("duel-p1").value) $("duel-p1").value = p1;
+          if (p2 && !$("duel-p2").value) $("duel-p2").value = p2;
+        } catch { /* ignore */ }
+        setup.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        $("duel-p1").focus();
+      }
+    } else startQuiz();
   });
 });
+
+$("duel-start").addEventListener("click", startDuel);
 
 $("home-btn").addEventListener("click", () => {
   renderHighScores($("menu-highscores"));
@@ -703,7 +815,16 @@ $("stats-reset").addEventListener("click", () => {
   } catch { /* ignore */ }
   renderStatsPanel();
 });
-$("over-again").addEventListener("click", startQuiz);
+$("over-again").addEventListener("click", () => {
+  if (state.duel) {
+    // rematch: same players & target, loser of the coin toss... just alternate starter
+    state.duel.players.forEach((p) => { p.score = 0; p.hints = MAX_HINTS; });
+    state.duel.turn = 0;
+    beginGame();
+  } else {
+    startQuiz();
+  }
+});
 $("over-menu").addEventListener("click", () => {
   renderHighScores($("menu-highscores"));
   showScreen("menu");
