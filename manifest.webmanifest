@@ -1,0 +1,14 @@
+{
+  "name": "Countries Trivia",
+  "short_name": "Countries",
+  "description": "Flag → country → capital trivia game with duels, hints and high scores.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0a1822",
+  "theme_color": "#0e7c8a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

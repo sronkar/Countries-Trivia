@@ -1,6 +1,6 @@
 # Countries-Trivia
 
-A flag → country → capital trivia game. No build step, no dependencies — plain HTML/CSS/JavaScript.
+A flag → country → capital trivia game. No build step, no dependencies — plain HTML/CSS/JavaScript. All 238 flags are bundled in `flags/`, so nothing is fetched from the internet.
 
 ## How to play
 
@@ -11,7 +11,10 @@ python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-(Flag images are loaded from the web, so an internet connection is needed.)
+## Offline / install as an app
+
+- **PWA**: when served over HTTP(S), a service worker (`sw.js`) precaches the entire app — after the first visit it works fully offline, and "Add to Home Screen" installs it like a native app (`manifest.webmanifest`, icons in `icons/`). To host it, enable GitHub Pages for this repo (Settings → Pages → Deploy from a branch → `main`).
+- **Single file**: `countries-trivia-offline.html` is the whole game (flags embedded) in one file — copy it anywhere and open it, no server or internet needed. Rebuild it after changes with `node tools/build-single-file.js`.
 
 ## Modes
 

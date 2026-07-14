@@ -1,6 +1,6 @@
 /* Countries Trivia — game logic */
 
-const FLAG_URL = (code) => `https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/${code}.svg`;
+const FLAG_URL = (code) => `flags/${code}.svg`; // bundled locally — works offline
 
 const MAX_ATTEMPTS = 3;   // guesses per step (country / capital)
 const MAX_WRONG = 3;      // missed countries before game over
@@ -1142,3 +1142,12 @@ $("learn-prev").addEventListener("click", (e) => { e.stopPropagation(); learnSte
 $("learn-next").addEventListener("click", (e) => { e.stopPropagation(); learnStep(1); });
 
 showScreen("menu");
+
+// offline support: cache the whole app (flags included) via a service worker.
+// Skipped on file:// where workers aren't allowed — the single-file build
+// doesn't need one anyway.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* offline mode unavailable */ });
+  });
+}
