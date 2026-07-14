@@ -328,6 +328,27 @@ header {
 }
 .duel-player b { color: var(--brass); font-size: 1.15rem; margin-left: 6px; font-variant-numeric: tabular-nums; }
 .duel-hearts { font-size: 0.75rem; letter-spacing: 1px; margin-left: 4px; }
+
+.duel-timer {
+  margin: 0;
+  align-self: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 12px;
+}
+.duel-timer.urgent {
+  color: var(--bad);
+  border-color: var(--bad);
+  animation: tick 1s infinite;
+}
+@keyframes tick {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
 .duel-player.active { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
 .duel-vs { color: var(--muted); font-style: italic; }
 .duel-target { color: var(--muted); font-size: 0.9rem; font-style: italic; }

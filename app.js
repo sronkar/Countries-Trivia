@@ -5,6 +5,7 @@ const FLAG_URL = (code) => `https://raw.githubusercontent.com/lipis/flag-icons/m
 const MAX_ATTEMPTS = 3;   // guesses per step (country / capital)
 const MAX_WRONG = 3;      // missed countries before game over
 const MAX_HINTS = 2;      // hints per game
+const TURN_SECONDS = 20;  // duel: time allowed per guess
 const MAX_SUGGESTIONS = 8;
 const EASY_HINT_MAX_LEVEL = 3; // levels 1-3 hint = multiple choice; 4-5 hint = region
 const HS_KEY = "ct-highscores";
@@ -75,6 +76,7 @@ const state = {
   duel: null,
   steal: null,         // {owner} while a missed duel flag is offered to the opponent
   afterNext: "question", // what the Next button leads to: "question" | "steal"
+  timeLeft: TURN_SECONDS, // duel: seconds remaining for the current guess
   // learn state
   learnDeck: [],
   learnPos: 0,
@@ -394,6 +396,7 @@ function nextQuestion() {
   updateHintButton();
   hideSuggestions();
   updateStats();
+  if (state.duel) startTurnTimer();
   window.scrollTo(0, 0); // bring the new flag back into view on small screens
   focusInput($("quiz-input"));
 }
@@ -530,6 +533,7 @@ function nextLabel() {
 
 // freeze input and wait for an explicit Next click
 function pauseForNext(label, afterNext = "question") {
+  stopTurnTimer(true); // no pressure while the phone changes hands
   state.afterNext = afterNext;
   state.stage = "done";
   $("quiz-input").disabled = true;
@@ -558,6 +562,47 @@ function onNext() {
   nextQuestion();
 }
 
+// ---------- duel turn timer ----------
+
+let turnTimerId = null;
+
+function renderTurnTimer() {
+  const el = $("duel-timer");
+  el.textContent = `⏱ ${state.timeLeft}s`;
+  el.classList.toggle("urgent", state.timeLeft <= 5);
+}
+
+function stopTurnTimer(hide) {
+  clearInterval(turnTimerId);
+  turnTimerId = null;
+  if (hide) $("duel-timer").classList.add("hidden");
+}
+
+// continue counting down from state.timeLeft
+function resumeTurnTimer() {
+  stopTurnTimer(false);
+  if (!state.duel) {
+    $("duel-timer").classList.add("hidden");
+    return;
+  }
+  renderTurnTimer();
+  $("duel-timer").classList.remove("hidden");
+  turnTimerId = setInterval(() => {
+    state.timeLeft--;
+    renderTurnTimer();
+    if (state.timeLeft <= 0) {
+      stopTurnTimer(false);
+      giveUp(true); // timing out counts exactly like giving up
+    }
+  }, 1000);
+}
+
+// fresh countdown for a new guess
+function startTurnTimer() {
+  state.timeLeft = TURN_SECONDS;
+  resumeTurnTimer();
+}
+
 // the opponent takes one shot at the flag the owner just missed
 function startSteal() {
   state.duel.turn = 1 - state.duel.turn;
@@ -576,6 +621,7 @@ function startSteal() {
   updateHintButton();
   hideSuggestions();
   updateStats();
+  startTurnTimer();
   window.scrollTo(0, 0);
   focusInput($("quiz-input"));
 }
@@ -599,28 +645,30 @@ function startCapitalStage() {
   $("quiz-next").classList.add("hidden");
   updateHintButton();
   hideSuggestions();
+  if (state.duel) startTurnTimer();
   window.scrollTo(0, 0);
   focusInput($("quiz-input"));
 }
 
-function giveUp() {
+function giveUp(timedOut = false) {
+  const prefix = timedOut ? "⏰ Time's up — " : "";
   const c = state.current;
   if (state.stage === "country") {
     recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
     if (state.duel && !state.steal) {
       duelP().wrong++;
       state.steal = { owner: state.duel.turn };
-      setFeedback(`${duelP().name} passes — ${duelOther().name} can steal!`, "bad");
+      setFeedback(`${prefix}${duelP().name} passes — ${duelOther().name} can steal!`, "bad");
       pauseForNext(`Steal: ${duelOther().name}'s try ➜`, "steal");
       updateStats();
       return;
     }
     if (!state.duel) state.wrong++;
-    setFeedback(`It was ${revealText(c)}.`, "bad");
+    setFeedback(`${prefix}It was ${revealText(c)}.`, "bad");
     pauseForNext(nextLabel());
   } else if (state.stage === "capital") {
     recordResult(c.code, { capSeen: 1, capRight: 0 });
-    setFeedback(`The capital of ${c.name} is ${c.capital}.`, "bad");
+    setFeedback(`${prefix}The capital of ${c.name} is ${c.capital}.`, "bad");
     pauseForNext(nextLabel());
   }
   updateStats();
@@ -814,6 +862,7 @@ function escapeHtml(s) {
 }
 
 function gameOver() {
+  stopTurnTimer(true);
   state.stage = "over";
   state.paused = false;
 
@@ -1007,11 +1056,16 @@ $("duel-start").addEventListener("click", startDuel);
 $("home-btn").addEventListener("click", async () => {
   const midGame = !screens.quiz.classList.contains("hidden") && state.stage !== "over";
   if (midGame) {
+    const timerWasRunning = turnTimerId !== null;
+    stopTurnTimer(false); // freeze the clock while deciding
     const ok = await askConfirm(
       "Pause the game and open the menu? You can resume it from there.",
       "Pause & menu", "Keep playing"
     );
-    if (!ok) return;
+    if (!ok) {
+      if (timerWasRunning) resumeTurnTimer();
+      return;
+    }
     state.paused = true;
   }
   renderHighScores($("menu-highscores"));
@@ -1022,6 +1076,10 @@ $("home-btn").addEventListener("click", async () => {
 $("resume-btn").addEventListener("click", () => {
   state.paused = false;
   showScreen("quiz");
+  // resume the duel clock if the paused turn was mid-guess
+  if (state.duel && (state.stage === "country" || state.stage === "capital")) {
+    resumeTurnTimer();
+  }
 });
 
 $("quiz-input").addEventListener("input", updateSuggestions);
@@ -1037,7 +1095,7 @@ $("quiz-input").addEventListener("keydown", (e) => {
 $("quiz-input").addEventListener("blur", () => setTimeout(hideSuggestions, 150));
 
 $("quiz-submit").addEventListener("click", submitGuess);
-$("quiz-reveal").addEventListener("click", giveUp);
+$("quiz-reveal").addEventListener("click", () => giveUp());
 $("quiz-hint").addEventListener("click", useHint);
 $("quiz-next").addEventListener("click", onNext);
 
