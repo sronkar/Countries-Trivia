@@ -71,8 +71,10 @@ const state = {
   saved: false,
   paused: false,       // a game is parked behind the menu, resumable
   askCapitals: true,   // menu option: follow up each flag with its capital
-  // 2-player duel: null in solo, else {players:[{name,score,hints}...], turn, target}
+  // 2-player duel: null in solo, else {players:[{name,score,caps,wrong}...], turn, target}
   duel: null,
+  steal: null,         // {owner} while a missed duel flag is offered to the opponent
+  afterNext: "question", // what the Next button leads to: "question" | "steal"
   // learn state
   learnDeck: [],
   learnPos: 0,
@@ -302,8 +304,13 @@ async function startDuel() {
 // A duel round = one flag for each player. The game may only end on a round
 // boundary, so both players always get the same number of turns; a tie at or
 // above the target goes to sudden death (keep playing until a round has a leader).
+// whose flag the current question is — during a steal the turn sits with the
+// stealer, but the flag still belongs to the player who missed it
+function duelOwner() {
+  return state.steal ? state.steal.owner : state.duel.turn;
+}
 function duelRoundDone() {
-  return state.duel.turn === 1;
+  return duelOwner() === 1;
 }
 function duelDecided() {
   const [a, b] = state.duel.players;
@@ -367,6 +374,8 @@ function nextQuestion() {
   state.stage = "country";
   state.attempts = 0;
   state.hintedThisQuestion = false;
+  state.steal = null;
+  state.afterNext = "question";
   state.questionNum++;
 
   $("quiz-image").src = FLAG_URL(state.current.code);
@@ -461,11 +470,23 @@ function submitGuess() {
     } else {
       state.attempts++;
       if (state.attempts >= attemptsAllowed()) {
-        if (state.duel) duelP().wrong++;
-        else state.wrong++;
         recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
-        setFeedback(`✘ Wrong — it was ${revealText(c)}.`, "bad");
-        pauseForNext(nextLabel());
+        if (state.duel && !state.steal) {
+          // owner misses: no reveal — the opponent gets one shot at the same flag
+          duelP().wrong++;
+          state.steal = { owner: state.duel.turn };
+          setFeedback(`✘ Not it — ${duelOther().name} can steal!`, "bad");
+          pauseForNext(`Steal: ${duelOther().name}'s try ➜`, "steal");
+        } else {
+          if (state.duel) {
+            // failed steal reveals the answer but costs the stealer nothing
+            setFeedback(`✘ Wrong — it was ${revealText(c)}.`, "bad");
+          } else {
+            state.wrong++;
+            setFeedback(`✘ Wrong — it was ${revealText(c)}.`, "bad");
+          }
+          pauseForNext(nextLabel());
+        }
       } else {
         const left = attemptsAllowed() - state.attempts;
         setFeedback(`✘ Wrong country — ${left} ${left === 1 ? "try" : "tries"} left.`, "bad");
@@ -501,14 +522,15 @@ function submitGuess() {
 function nextLabel() {
   if (state.duel) {
     if (duelRoundDone() && duelDecided()) return "See results ➜";
-    return `Next: ${duelOther().name}'s turn ➜`;
+    return `Next: ${state.duel.players[1 - duelOwner()].name}'s turn ➜`;
   }
   if (state.wrong >= MAX_WRONG || state.deckPos >= state.deck.length) return "See results ➜";
   return "Next flag ➜";
 }
 
 // freeze input and wait for an explicit Next click
-function pauseForNext(label) {
+function pauseForNext(label, afterNext = "question") {
+  state.afterNext = afterNext;
   state.stage = "done";
   $("quiz-input").disabled = true;
   $("quiz-submit").disabled = true;
@@ -522,14 +544,40 @@ function pauseForNext(label) {
 }
 
 function onNext() {
+  if (state.afterNext === "steal") {
+    startSteal();
+    return;
+  }
   if (state.duel) {
     if (duelRoundDone() && duelDecided()) {
       gameOver();
       return;
     }
-    state.duel.turn = 1 - state.duel.turn; // hand over the flag
+    state.duel.turn = 1 - duelOwner(); // next flag belongs to the other player
   }
   nextQuestion();
+}
+
+// the opponent takes one shot at the flag the owner just missed
+function startSteal() {
+  state.duel.turn = 1 - state.duel.turn;
+  state.stage = "country";
+  state.attempts = 0;
+  state.hintedThisQuestion = false;
+  state.afterNext = "question";
+  $("quiz-prompt").textContent = `${duelP().name} — steal! Which country does this flag belong to?`;
+  setFeedback("", "");
+  $("quiz-input").value = "";
+  $("quiz-input").placeholder = "Type a country name...";
+  $("quiz-input").disabled = false;
+  $("quiz-submit").disabled = false;
+  $("quiz-reveal").classList.remove("hidden");
+  $("quiz-next").classList.add("hidden");
+  updateHintButton();
+  hideSuggestions();
+  updateStats();
+  window.scrollTo(0, 0);
+  focusInput($("quiz-input"));
 }
 
 function startCapitalStage() {
@@ -558,9 +606,16 @@ function startCapitalStage() {
 function giveUp() {
   const c = state.current;
   if (state.stage === "country") {
-    if (state.duel) duelP().wrong++;
-    else state.wrong++;
     recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
+    if (state.duel && !state.steal) {
+      duelP().wrong++;
+      state.steal = { owner: state.duel.turn };
+      setFeedback(`${duelP().name} passes — ${duelOther().name} can steal!`, "bad");
+      pauseForNext(`Steal: ${duelOther().name}'s try ➜`, "steal");
+      updateStats();
+      return;
+    }
+    if (!state.duel) state.wrong++;
     setFeedback(`It was ${revealText(c)}.`, "bad");
     pauseForNext(nextLabel());
   } else if (state.stage === "capital") {
