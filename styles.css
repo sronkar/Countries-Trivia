@@ -219,6 +219,16 @@ header {
 }
 .mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.opt-row input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
 .level-hint { color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
 .tier-note { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin-top: 2px; }
 .tier-note b { color: var(--brass); }
@@ -618,13 +628,15 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
   .duel-bar { margin-bottom: 8px; gap: 8px; }
   .duel-player { padding: 5px 10px; font-size: 0.9rem; }
 
-  .quiz-card { padding: 12px 12px 14px; gap: 9px; }
+  .quiz-card { padding: 10px 12px 12px; gap: 8px; }
   #quiz-image-wrap, #learn-image-wrap {
     min-height: 0;
-    padding: 8px;
-    max-width: 250px;
+    padding: 6px;
+    max-width: 220px;
   }
-  #quiz-image, #learn-flag { max-height: 130px; }
+  #quiz-image, #learn-flag { max-height: 112px; }
+  /* don't reserve a line for feedback until there is some */
+  .feedback:empty { min-height: 0; }
   .tier-chip { font-size: 0.62rem; padding: 4px 10px; }
   .quiz-prompt { font-size: 1.02rem; }
 

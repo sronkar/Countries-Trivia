@@ -70,6 +70,7 @@ const state = {
   questionNum: 0,
   saved: false,
   paused: false,       // a game is parked behind the menu, resumable
+  askCapitals: true,   // menu option: follow up each flag with its capital
   // 2-player duel: null in solo, else {players:[{name,score,hints}...], turn, target}
   duel: null,
   // learn state
@@ -289,13 +290,24 @@ async function startDuel() {
   } catch { /* ignore */ }
   state.duel = {
     players: [
-      { name: p1, score: 0, hints: MAX_HINTS },
-      { name: p2, score: 0, hints: MAX_HINTS },
+      { name: p1, score: 0, hints: MAX_HINTS, caps: 0 },
+      { name: p2, score: 0, hints: MAX_HINTS, caps: 0 },
     ],
     turn: 0,
     target,
   };
   beginGame();
+}
+
+// A duel round = one flag for each player. The game may only end on a round
+// boundary, so both players always get the same number of turns; a tie at or
+// above the target goes to sudden death (keep playing until a round has a leader).
+function duelRoundDone() {
+  return state.duel.turn === 1;
+}
+function duelDecided() {
+  const [a, b] = state.duel.players;
+  return (duelWon() && a.score !== b.score) || state.deckPos >= state.deck.length;
 }
 
 // Duel decks are dealt in rounds of two same-tier flags, so each turn both
@@ -343,7 +355,7 @@ function beginGame() {
 
 function nextQuestion() {
   const finished = state.duel
-    ? duelWon() || state.deckPos >= state.deck.length
+    ? state.deckPos >= state.deck.length // duel wins are decided at round boundaries in onNext
     : state.wrong >= MAX_WRONG || state.deckPos >= state.deck.length;
   if (finished) {
     gameOver();
@@ -386,13 +398,15 @@ function updateStats() {
   $("stat-hints").textContent = hintsLeftNow();
   $("stat-question").textContent = `${state.questionNum} / ${state.deck.length}`;
   if (state.duel) {
+    const [a, b] = state.duel.players;
+    const suddenDeath = duelWon() && a.score === b.score;
     $("duel-bar").innerHTML = state.duel.players
       .map(
         (p, i) =>
           `<span class="duel-player${i === state.duel.turn ? " active" : ""}">${escapeHtml(p.name)} <b>${p.score}</b></span>`
       )
       .join('<span class="duel-vs">vs</span>') +
-      `<span class="duel-target">first to ${state.duel.target}</span>`;
+      `<span class="duel-target">${suddenDeath ? "⚡ sudden death — lead after a round to win" : `first to ${state.duel.target}`}</span>`;
   }
 }
 
@@ -424,8 +438,13 @@ function submitGuess() {
       else state.score += c.points;
       state.countriesRight++;
       recordResult(c.code, { seen: 1, right: 1, hinted: state.hintedThisQuestion ? 1 : 0 });
-      startCapitalStage(); // straight to the capital — no extra click
-      setFeedback(`✔ It's ${c.name}! +${c.points} pts — now the capital:`, "good");
+      if (state.askCapitals) {
+        startCapitalStage(); // straight to the capital — no extra click
+        setFeedback(`✔ It's ${c.name}! +${c.points} pts — now the capital:`, "good");
+      } else {
+        setFeedback(`✔ Correct! It's ${c.name}. +${c.points} pts`, "good");
+        pauseForNext(nextLabel());
+      }
     } else {
       state.attempts++;
       if (state.attempts >= MAX_ATTEMPTS) {
@@ -441,8 +460,10 @@ function submitGuess() {
   } else {
     if (capitalAnswers(c).includes(guess)) {
       state.capitals++;
-      if (state.duel) duelP().score += capitalBonus(c);
-      else state.score += capitalBonus(c);
+      if (state.duel) {
+        duelP().score += capitalBonus(c);
+        duelP().caps++;
+      } else state.score += capitalBonus(c);
       recordResult(c.code, { capSeen: 1, capRight: 1 });
       setFeedback(`✔ Correct! The capital of ${c.name} is ${c.capital}. +${capitalBonus(c)} pts bonus`, "good");
     } else {
@@ -463,7 +484,7 @@ function submitGuess() {
 
 function nextLabel() {
   if (state.duel) {
-    if (duelWon() || state.deckPos >= state.deck.length) return "See results ➜";
+    if (duelRoundDone() && duelDecided()) return "See results ➜";
     return `Next: ${duelOther().name}'s turn ➜`;
   }
   if (state.wrong >= MAX_WRONG || state.deckPos >= state.deck.length) return "See results ➜";
@@ -485,7 +506,13 @@ function pauseForNext(label) {
 }
 
 function onNext() {
-  if (state.duel) state.duel.turn = 1 - state.duel.turn; // hand over the flag
+  if (state.duel) {
+    if (duelRoundDone() && duelDecided()) {
+      gameOver();
+      return;
+    }
+    state.duel.turn = 1 - state.duel.turn; // hand over the flag
+  }
   nextQuestion();
 }
 
@@ -494,6 +521,7 @@ function startCapitalStage() {
   state.stage = "capital";
   state.attempts = 0;
   state.hintedThisQuestion = false; // a fresh hint is allowed for the capital
+  $("quiz-tier").textContent = `Tier ${c.tier} · capital bonus +${capitalBonus(c)} pts`;
   $("quiz-prompt").textContent =
     (state.duel ? `${duelP().name} — w` : "W") + `hat is the capital of ${c.name}?`;
   setFeedback("", "");
@@ -719,11 +747,21 @@ function gameOver() {
 
   if (state.duel) {
     const [a, b] = state.duel.players;
-    const tie = a.score === b.score;
-    $("over-title").textContent = tie ? "🤝 It's a tie!" : `🏆 ${duelLeader().name} wins!`;
+    // tiebreaker chain: points → capitals guessed → hints left → true tie
+    let winner = null;
+    let tiebreak = "";
+    if (a.score !== b.score) winner = duelLeader();
+    else if (a.caps !== b.caps) {
+      winner = a.caps > b.caps ? a : b;
+      tiebreak = ` Tie broken by capitals guessed (${a.caps}–${b.caps}).`;
+    } else if (a.hints !== b.hints) {
+      winner = a.hints > b.hints ? a : b;
+      tiebreak = ` Tie broken by hints left (${a.hints}–${b.hints}).`;
+    }
+    $("over-title").textContent = winner ? `🏆 ${winner.name} wins!` : "🤝 It's a tie!";
     $("over-summary").textContent =
       `${a.name} ${a.score} — ${b.score} ${b.name} · first to ${state.duel.target} · ` +
-      `${levelsLabel()} · ${state.questionNum} flags played.`;
+      `${levelsLabel()} · ${state.questionNum} flags played.` + tiebreak;
     // duel results aren't comparable to solo runs — no high-score entry
     $("over-save-form").classList.add("hidden");
     $("over-saved").classList.add("hidden");
@@ -838,6 +876,26 @@ $("theme-btn").addEventListener("click", () => {
   } catch { /* ignore */ }
 });
 
+// capitals on/off option (persisted)
+try {
+  state.askCapitals = localStorage.getItem("ct-ask-capitals") !== "off";
+} catch { /* ignore */ }
+$("opt-capitals").checked = state.askCapitals;
+$("opt-capitals").addEventListener("change", () => {
+  state.askCapitals = $("opt-capitals").checked;
+  try {
+    localStorage.setItem("ct-ask-capitals", state.askCapitals ? "on" : "off");
+  } catch { /* ignore */ }
+});
+
+// with the on-screen keyboard up, pin the quiz card (flag included) to the top
+$("quiz-input").addEventListener("focus", () => {
+  if (!COARSE_POINTER || screens.quiz.classList.contains("hidden")) return;
+  setTimeout(() => {
+    document.querySelector("#screen-quiz .quiz-card").scrollIntoView({ block: "start" });
+  }, 350); // after the keyboard animation settles
+});
+
 buildLevelPicker();
 renderHighScores($("menu-highscores"));
 
@@ -925,8 +983,7 @@ $("stats-reset").addEventListener("click", async () => {
 });
 $("over-again").addEventListener("click", () => {
   if (state.duel) {
-    // rematch: same players & target, loser of the coin toss... just alternate starter
-    state.duel.players.forEach((p) => { p.score = 0; p.hints = MAX_HINTS; });
+    state.duel.players.forEach((p) => { p.score = 0; p.hints = MAX_HINTS; p.caps = 0; });
     state.duel.turn = 0;
     beginGame();
   } else {
