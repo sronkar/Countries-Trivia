@@ -327,6 +327,7 @@ header {
   font-size: 1rem;
 }
 .duel-player b { color: var(--brass); font-size: 1.15rem; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.duel-hearts { font-size: 0.75rem; letter-spacing: 1px; margin-left: 4px; }
 .duel-player.active { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
 .duel-vs { color: var(--muted); font-style: italic; }
 .duel-target { color: var(--muted); font-size: 0.9rem; font-style: italic; }
