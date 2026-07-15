@@ -170,12 +170,12 @@ header {
 
 /* ---------- level picker ---------- */
 
-.level-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+/* always one row of five — the picker is the main control, keep it tight */
+.level-picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 
 .level-btn {
-  flex: 1 1 0;
-  min-width: 92px;
-  padding: 10px 6px;
+  min-width: 0;
+  padding: 10px 4px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -203,8 +203,15 @@ header {
 .level-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 .level-btn.selected {
   border: 2px solid var(--accent);
-  padding: 9px 5px;
+  padding: 9px 3px;
   background: var(--panel-2);
+}
+.lv-name {
+  display: block;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .level-tools { display: flex; gap: 8px; margin-top: 10px; }
@@ -230,7 +237,8 @@ header {
 .opt-row input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 
 .level-hint { color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
-.tier-note { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin-top: 2px; }
+/* flavor text stays quiet — the buttons are the stars */
+.tier-note { color: var(--muted); opacity: 0.75; font-size: 0.75rem; line-height: 1.45; margin-top: 2px; max-width: 62ch; }
 .tier-note b { color: var(--brass); }
 .level-hint.shake { animation: shake 0.35s; color: var(--bad); }
 @keyframes shake {
@@ -257,9 +265,17 @@ header {
   transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
 }
 .mode-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
-.mode-emoji { font-size: 1.7rem; }
-.mode-name { font-family: var(--serif); font-weight: 700; font-size: 1.15rem; }
-.mode-desc { color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+.mode-card::after {
+  content: "Play ➜";
+  margin-top: 4px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.mode-card[data-mode="learn"]::after { content: "Study ➜"; }
+.mode-emoji { font-size: 1.6rem; }
+.mode-name { font-family: var(--serif); font-weight: 700; font-size: 1.25rem; }
+.mode-desc { color: var(--muted); opacity: 0.85; font-size: 0.8rem; line-height: 1.45; }
 
 /* ---------- duel setup ---------- */
 
@@ -643,6 +659,19 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
   .icon-btn { width: 32px; height: 32px; font-size: 0.9rem; }
   .header-tools { padding-top: 0; }
   .ghost-btn { padding: 7px 12px; font-size: 0.82rem; }
+
+  /* phones: buttons first — trim the flavor */
+  .tagline { display: none; }
+  .menu-block { margin-bottom: 22px; }
+  .level-picker { gap: 5px; }
+  .level-btn { padding: 8px 2px; }
+  .level-btn.selected { padding: 7px 1px; }
+  .level-btn .lv-num { font-size: 1.25rem; }
+  .lv-name { display: none; }
+  .level-btn .lv-pts { font-size: 0.58rem; margin-top: 1px; letter-spacing: 0; }
+  .tier-note { font-size: 0.7rem; }
+  .mode-card { padding: 14px 12px; gap: 4px; }
+  .mode-desc { font-size: 0.75rem; }
 
   .statusbar { gap: 10px; margin-bottom: 8px; }
   .stat { font-size: 0.68rem; }
