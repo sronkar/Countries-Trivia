@@ -71,6 +71,10 @@
         <input type="checkbox" id="opt-capitals" checked>
         Also ask for the capital after each flag (+50% pts bonus)
       </label>
+      <label class="opt-row">
+        <input type="checkbox" id="opt-choices">
+        Multiple choice — pick from 6 options instead of typing (easier, great for kids)
+      </label>
     </div>
 
     <div id="duel-setup" class="menu-block hidden">
@@ -123,7 +127,7 @@
       <p id="quiz-tier" class="tier-chip"></p>
       <p id="quiz-prompt" class="quiz-prompt"></p>
 
-      <div class="answer-area">
+      <div class="answer-area" id="answer-area">
         <div class="autocomplete-wrap">
           <input id="quiz-input" type="text" autocomplete="off" spellcheck="false"
                  placeholder="Start typing...">
@@ -131,6 +135,8 @@
         </div>
         <button id="quiz-submit" class="primary-btn">Guess</button>
       </div>
+
+      <div id="choice-box" class="choice-grid hidden"></div>
 
       <div id="hint-box" class="hint-box hidden"></div>
 

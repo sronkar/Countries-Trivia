@@ -72,6 +72,8 @@ const state = {
   saved: false,
   paused: false,       // a game is parked behind the menu, resumable
   askCapitals: true,   // menu option: follow up each flag with its capital
+  multiChoice: false,  // menu option: answer by picking one of 6 options
+  choices: null,       // {country:[names], capital:[names]} for the current flag
   // 2-player duel: null in solo, else {players:[{name,score,caps,wrong}...], turn, target}
   duel: null,
   steal: null,         // {owner} while a missed duel flag is offered to the opponent
@@ -358,7 +360,7 @@ function beginGame() {
     `${levelsLabel()} · ` + (state.duel ? `Duel to ${state.duel.target}` : "Trivia");
   $("wrap-score").classList.toggle("hidden", !!state.duel);
   $("wrap-lives").classList.toggle("hidden", !!state.duel);
-  $("wrap-hints").classList.toggle("hidden", !!state.duel);
+  $("wrap-hints").classList.toggle("hidden", !!state.duel || state.multiChoice);
   $("duel-bar").classList.toggle("hidden", !state.duel);
   showScreen("quiz");
   nextQuestion();
@@ -384,6 +386,8 @@ function nextQuestion() {
   $("quiz-tier").textContent = `Tier ${state.current.tier} · worth ${state.current.points} pts`;
   $("quiz-prompt").textContent =
     (state.duel ? `${duelP().name} — w` : "W") + "hich country does this flag belong to?";
+  state.choices = state.multiChoice ? buildChoices(state.current) : null;
+  applyAnswerMode("country");
   setFeedback("", "");
   $("quiz-input").value = "";
   $("quiz-input").placeholder = "Type a country name...";
@@ -415,6 +419,75 @@ function revealText(c) {
   return state.askCapitals ? `${c.name} (capital: ${c.capital})` : c.name;
 }
 
+// ---------- multiple-choice option ----------
+
+// coarse region bucket for picking plausible decoys ("the Caribbean (Lesser
+// Antilles)" and "the Caribbean (south of Cuba)" should count as neighbours)
+function regionKey(c) {
+  return c.region.toLowerCase().replace(/^the /, "").split("(")[0].trim();
+}
+
+// decoys that aren't obviously wrong: prefer same region, then similar level
+function pickDecoys(c, n) {
+  const key = regionKey(c);
+  const scored = shuffle(COUNTRIES.filter((x) => x.code !== c.code)).map((x) => ({
+    x,
+    score: (regionKey(x) === key ? 2 : 0) + (Math.abs(x.level - c.level) <= 1 ? 1 : 0),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, n).map((o) => o.x);
+}
+
+// 6 options (answer included) for the current flag, one set per stage
+function buildChoices(c) {
+  const countryChoices = shuffle([c.name, ...pickDecoys(c, 5).map((x) => x.name)]);
+  const capitalPool = [];
+  for (const d of pickDecoys(c, 12)) {
+    if (d.capital !== c.capital && !capitalPool.includes(d.capital)) capitalPool.push(d.capital);
+    if (capitalPool.length === 5) break;
+  }
+  return { country: countryChoices, capital: shuffle([c.capital, ...capitalPool]) };
+}
+
+function renderChoices(stage) {
+  const box = $("choice-box");
+  box.innerHTML = "";
+  state.choices[stage].forEach((text) => {
+    const b = document.createElement("button");
+    b.className = "choice-btn";
+    b.textContent = text;
+    b.addEventListener("click", () => {
+      if (state.stage !== stage) return;
+      $("quiz-input").value = text;
+      submitGuess();
+      // wrong pick with tries left: grey it out and let them try again
+      if (state.stage === stage) {
+        b.classList.add("wrong");
+        b.disabled = true;
+      }
+    });
+    box.appendChild(b);
+  });
+}
+
+// swap between typed answers and the 6-option grid for the current stage
+function applyAnswerMode(stage) {
+  $("answer-area").classList.toggle("hidden", state.multiChoice);
+  $("choice-box").classList.toggle("hidden", !state.multiChoice);
+  if (state.multiChoice) renderChoices(stage);
+}
+
+// on resolution: freeze the grid and highlight the answer (unless a steal is
+// coming — the opponent still has to find it)
+function settleChoices(revealAnswer) {
+  if (!state.multiChoice) return;
+  const answer = state.stage === "capital" ? state.current.capital : state.current.name;
+  $("choice-box").querySelectorAll(".choice-btn").forEach((b) => {
+    b.disabled = true;
+    if (revealAnswer && b.textContent === answer) b.classList.add("correct");
+  });
+}
+
 function updateStats() {
   $("stat-score").textContent = state.score;
   $("stat-lives").textContent =
@@ -437,7 +510,9 @@ function updateStats() {
 
 function updateHintButton() {
   const btn = $("quiz-hint");
-  const inGuessStage = (state.stage === "country" || state.stage === "capital") && !state.duel;
+  // multiple choice is already its own hint — no extra ones
+  const inGuessStage =
+    (state.stage === "country" || state.stage === "capital") && !state.duel && !state.multiChoice;
   btn.classList.toggle("hidden", !inGuessStage);
   btn.disabled = !(inGuessStage && hintsLeftNow() > 0 && !state.hintedThisQuestion);
   btn.textContent = `💡 Hint (${hintsLeftNow()} left)`;
@@ -474,7 +549,9 @@ function submitGuess() {
       state.attempts++;
       if (state.attempts >= attemptsAllowed()) {
         recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
-        if (state.duel && !state.steal) {
+        // no steals in multiple-choice duels: the greyed-out wrong pick would
+        // shrink the option space and hand the stealer an unfair edge
+        if (state.duel && !state.steal && !state.multiChoice) {
           // owner misses: no reveal — the opponent gets one shot at the same flag
           duelP().wrong++;
           state.steal = { owner: state.duel.turn };
@@ -482,7 +559,8 @@ function submitGuess() {
           pauseForNext(`Steal: ${duelOther().name}'s try ➜`, "steal");
         } else {
           if (state.duel) {
-            // failed steal reveals the answer but costs the stealer nothing
+            // a failed steal costs the stealer nothing; an owner's miss costs a heart
+            if (!state.steal) duelP().wrong++;
             setFeedback(`✘ Wrong — it was ${revealText(c)}.`, "bad");
           } else {
             state.wrong++;
@@ -534,6 +612,7 @@ function nextLabel() {
 // freeze input and wait for an explicit Next click
 function pauseForNext(label, afterNext = "question") {
   stopTurnTimer(true); // no pressure while the phone changes hands
+  settleChoices(afterNext !== "steal"); // don't spoil the answer for the stealer
   state.afterNext = afterNext;
   state.stage = "done";
   $("quiz-input").disabled = true;
@@ -618,6 +697,7 @@ function startSteal() {
   $("quiz-submit").disabled = false;
   $("quiz-reveal").classList.remove("hidden");
   $("quiz-next").classList.add("hidden");
+  applyAnswerMode("country"); // fresh grid for the stealer, same 6 options
   updateHintButton();
   hideSuggestions();
   updateStats();
@@ -643,6 +723,7 @@ function startCapitalStage() {
   $("hint-box").innerHTML = "";
   $("quiz-reveal").classList.remove("hidden");
   $("quiz-next").classList.add("hidden");
+  applyAnswerMode("capital");
   updateHintButton();
   hideSuggestions();
   if (state.duel) startTurnTimer();
@@ -655,7 +736,7 @@ function giveUp(timedOut = false) {
   const c = state.current;
   if (state.stage === "country") {
     recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
-    if (state.duel && !state.steal) {
+    if (state.duel && !state.steal && !state.multiChoice) {
       duelP().wrong++;
       state.steal = { owner: state.duel.turn };
       setFeedback(`${prefix}${duelP().name} passes — ${duelOther().name} can steal!`, "bad");
@@ -663,7 +744,9 @@ function giveUp(timedOut = false) {
       updateStats();
       return;
     }
-    if (!state.duel) state.wrong++;
+    if (state.duel) {
+      if (!state.steal) duelP().wrong++; // multiple-choice duels: a pass still costs the heart
+    } else state.wrong++;
     setFeedback(`${prefix}It was ${revealText(c)}.`, "bad");
     pauseForNext(nextLabel());
   } else if (state.stage === "capital") {
@@ -1017,6 +1100,18 @@ $("opt-capitals").addEventListener("change", () => {
   state.askCapitals = $("opt-capitals").checked;
   try {
     localStorage.setItem("ct-ask-capitals", state.askCapitals ? "on" : "off");
+  } catch { /* ignore */ }
+});
+
+// multiple-choice option (persisted, off by default)
+try {
+  state.multiChoice = localStorage.getItem("ct-multi-choice") === "on";
+} catch { /* ignore */ }
+$("opt-choices").checked = state.multiChoice;
+$("opt-choices").addEventListener("change", () => {
+  state.multiChoice = $("opt-choices").checked;
+  try {
+    localStorage.setItem("ct-multi-choice", state.multiChoice ? "on" : "off");
   } catch { /* ignore */ }
 });
 
