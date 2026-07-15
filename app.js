@@ -549,7 +549,9 @@ function submitGuess() {
       state.attempts++;
       if (state.attempts >= attemptsAllowed()) {
         recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
-        if (state.duel && !state.steal) {
+        // no steals in multiple-choice duels: the greyed-out wrong pick would
+        // shrink the option space and hand the stealer an unfair edge
+        if (state.duel && !state.steal && !state.multiChoice) {
           // owner misses: no reveal — the opponent gets one shot at the same flag
           duelP().wrong++;
           state.steal = { owner: state.duel.turn };
@@ -557,7 +559,8 @@ function submitGuess() {
           pauseForNext(`Steal: ${duelOther().name}'s try ➜`, "steal");
         } else {
           if (state.duel) {
-            // failed steal reveals the answer but costs the stealer nothing
+            // a failed steal costs the stealer nothing; an owner's miss costs a heart
+            if (!state.steal) duelP().wrong++;
             setFeedback(`✘ Wrong — it was ${revealText(c)}.`, "bad");
           } else {
             state.wrong++;
@@ -733,7 +736,7 @@ function giveUp(timedOut = false) {
   const c = state.current;
   if (state.stage === "country") {
     recordResult(c.code, { seen: 1, right: 0, hinted: state.hintedThisQuestion ? 1 : 0 });
-    if (state.duel && !state.steal) {
+    if (state.duel && !state.steal && !state.multiChoice) {
       duelP().wrong++;
       state.steal = { owner: state.duel.turn };
       setFeedback(`${prefix}${duelP().name} passes — ${duelOther().name} can steal!`, "bad");
@@ -741,7 +744,9 @@ function giveUp(timedOut = false) {
       updateStats();
       return;
     }
-    if (!state.duel) state.wrong++;
+    if (state.duel) {
+      if (!state.steal) duelP().wrong++; // multiple-choice duels: a pass still costs the heart
+    } else state.wrong++;
     setFeedback(`${prefix}It was ${revealText(c)}.`, "bad");
     pauseForNext(nextLabel());
   } else if (state.stage === "capital") {
