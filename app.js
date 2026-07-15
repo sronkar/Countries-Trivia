@@ -179,7 +179,7 @@ function buildLevelPicker() {
     btn.className = "level-btn" + (state.levels.has(lv) ? " selected" : "");
     const range = pointsRange(COUNTRIES.filter((c) => c.level === lv));
     btn.innerHTML =
-      `<span class="lv-num">${lv}</span>${LEVEL_NAMES[lv]}<span class="lv-pts">${range}</span>`;
+      `<span class="lv-num">${lv}</span><span class="lv-name">${LEVEL_NAMES[lv]}</span><span class="lv-pts">${range}</span>`;
     btn.title = LEVEL_HINTS[lv];
     btn.addEventListener("click", () => {
       if (state.levels.has(lv)) state.levels.delete(lv);
