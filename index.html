@@ -41,7 +41,10 @@
         <button id="levels-none" class="mini-btn">Clear all</button>
       </div>
       <p id="level-hint" class="level-hint"></p>
-      <p class="tier-note">Every flag carries a <b>point tier</b> — from 5 pts (unmissable) to 100 pts (truly obscure) — shown on its passport stamp during the game. Higher levels hold higher tiers, and naming the capital adds a 50% bonus.</p>
+      <details class="tier-details">
+        <summary>How do points work?</summary>
+        <p class="tier-note">Every flag carries a <b>point tier</b> — from 5 pts (unmissable) to 100 pts (truly obscure) — shown on its passport stamp during the game. Higher levels hold higher tiers, and naming the capital adds a 50% bonus.</p>
+      </details>
     </div>
 
     <div class="menu-block">
@@ -50,17 +53,17 @@
         <button class="mode-card" data-mode="flag">
           <span class="mode-emoji">🚩</span>
           <span class="mode-name">Trivia</span>
-          <span class="mode-desc">Name the country from its flag, then its capital. 3 misses and the game is over!</span>
+          <span class="mode-desc">Flag → country → capital. 3 misses ends it.</span>
         </button>
         <button class="mode-card" data-mode="duel">
           <span class="mode-emoji">⚔️</span>
           <span class="mode-name">2 Players</span>
-          <span class="mode-desc">Take turns — one try per flag, no hints, 3 misses and you're out. First to the target wins</span>
+          <span class="mode-desc">Turn-based duel. First to the target wins.</span>
         </button>
         <button class="mode-card" data-mode="learn">
           <span class="mode-emoji">📖</span>
           <span class="mode-name">Knowledge</span>
-          <span class="mode-desc">Study mode: see a flag, click for the country, click again for the capital</span>
+          <span class="mode-desc">Flashcards — tap to reveal.</span>
         </button>
       </div>
     </div>
@@ -69,11 +72,11 @@
       <h2>Options</h2>
       <label class="opt-row">
         <input type="checkbox" id="opt-capitals" checked>
-        Also ask for the capital after each flag (+50% pts bonus)
+        Ask capitals too (+50% pts bonus)
       </label>
       <label class="opt-row">
         <input type="checkbox" id="opt-choices">
-        Multiple choice — pick from 6 options instead of typing (easier, great for kids)
+        Multiple choice — 6 options, kid-friendly
       </label>
     </div>
 

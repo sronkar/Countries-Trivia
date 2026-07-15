@@ -245,8 +245,17 @@ header {
 .opt-row input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 
 .level-hint { color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
-/* flavor text stays quiet — the buttons are the stars */
-.tier-note { color: var(--muted); opacity: 0.75; font-size: 0.75rem; line-height: 1.45; margin-top: 2px; max-width: 62ch; }
+/* flavor text stays folded away — the buttons are the stars */
+.tier-details { margin-top: 2px; }
+.tier-details summary {
+  color: var(--muted);
+  opacity: 0.8;
+  font-size: 0.78rem;
+  cursor: pointer;
+  width: fit-content;
+}
+.tier-details summary:hover { color: var(--accent); opacity: 1; }
+.tier-note { color: var(--muted); font-size: 0.78rem; line-height: 1.5; margin: 6px 0 0; max-width: 62ch; }
 .tier-note b { color: var(--brass); }
 .level-hint.shake { animation: shake 0.35s; color: var(--bad); }
 @keyframes shake {
@@ -703,8 +712,10 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
   .level-btn .lv-num { font-size: 1.25rem; }
   .lv-name { display: none; }
   .level-btn .lv-pts { font-size: 0.58rem; margin-top: 1px; letter-spacing: 0; }
-  .tier-note { font-size: 0.7rem; }
-  .mode-card { padding: 14px 12px; gap: 4px; }
+  .mode-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .mode-card { padding: 12px; gap: 4px; }
+  .mode-emoji { font-size: 1.3rem; }
+  .mode-name { font-size: 1.1rem; }
   .mode-desc { font-size: 0.75rem; }
   .choice-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .choice-btn { padding: 10px 6px; font-size: 0.85rem; min-height: 44px; }
@@ -770,7 +781,10 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
         <button id="levels-none" class="mini-btn">Clear all</button>
       </div>
       <p id="level-hint" class="level-hint"></p>
-      <p class="tier-note">Every flag carries a <b>point tier</b> — from 5 pts (unmissable) to 100 pts (truly obscure) — shown on its passport stamp during the game. Higher levels hold higher tiers, and naming the capital adds a 50% bonus.</p>
+      <details class="tier-details">
+        <summary>How do points work?</summary>
+        <p class="tier-note">Every flag carries a <b>point tier</b> — from 5 pts (unmissable) to 100 pts (truly obscure) — shown on its passport stamp during the game. Higher levels hold higher tiers, and naming the capital adds a 50% bonus.</p>
+      </details>
     </div>
 
     <div class="menu-block">
@@ -779,17 +793,17 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
         <button class="mode-card" data-mode="flag">
           <span class="mode-emoji">🚩</span>
           <span class="mode-name">Trivia</span>
-          <span class="mode-desc">Name the country from its flag, then its capital. 3 misses and the game is over!</span>
+          <span class="mode-desc">Flag → country → capital. 3 misses ends it.</span>
         </button>
         <button class="mode-card" data-mode="duel">
           <span class="mode-emoji">⚔️</span>
           <span class="mode-name">2 Players</span>
-          <span class="mode-desc">Take turns — one try per flag, no hints, 3 misses and you're out. First to the target wins</span>
+          <span class="mode-desc">Turn-based duel. First to the target wins.</span>
         </button>
         <button class="mode-card" data-mode="learn">
           <span class="mode-emoji">📖</span>
           <span class="mode-name">Knowledge</span>
-          <span class="mode-desc">Study mode: see a flag, click for the country, click again for the capital</span>
+          <span class="mode-desc">Flashcards — tap to reveal.</span>
         </button>
       </div>
     </div>
@@ -798,11 +812,11 @@ section#screen-learn .quiz-actions { margin-top: 18px; }
       <h2>Options</h2>
       <label class="opt-row">
         <input type="checkbox" id="opt-capitals" checked>
-        Also ask for the capital after each flag (+50% pts bonus)
+        Ask capitals too (+50% pts bonus)
       </label>
       <label class="opt-row">
         <input type="checkbox" id="opt-choices">
-        Multiple choice — pick from 6 options instead of typing (easier, great for kids)
+        Multiple choice — 6 options, kid-friendly
       </label>
     </div>
 
